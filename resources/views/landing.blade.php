@@ -12,7 +12,34 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
      <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-    
+
+     <!-- Meta Standar SEO -->
+    <meta name="description" content="Otomatisasi layanan pelanggan & percepat closing penjualan lintas WhatsApp, Instagram, dan Facebook dengan kecerdasan buatan Gemini AI.">
+    <meta name="keywords" content="omnichannel crm, ai chatbot whatsapp, follow up otomatis umroh, crm indonesia, bot wa cerdas, wasilah ai">
+    <meta name="author" content="Wasilah AI">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#0f766e">
+
+    <!-- 🔥 1. OPEN GRAPH / FACEBOOK / WHATSAPP / TELEGRAM / LINKEDIN -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ url('/') }}">
+    <meta property="og:site_name" content="Wasilah.ai">
+    <meta property="og:title" content="Wasilah AI — Platform Omnichannel AI Chatbot & CRM Penjualan #1">
+    <meta property="og:description" content="Tingkatkan closing penjualan dan otomatisasi chat 24 jam lintas WhatsApp, Instagram, dan Facebook dengan AI Gemini Vision. Coba sekarang!">
+    <!-- Gambar Banner Preview (Ukuran Standar 1200 x 630 px) -->
+    <meta property="og:image" content="hero.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Wasilah AI Omnichannel CRM Workspace">
+    <meta property="og:locale" content="id_ID">
+
+    <!-- 🔥 2. TWITTER / X CARD (BANNER BESAR) -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="{{ url('/') }}">
+    <meta name="twitter:title" content="Wasilah AI — Platform Omnichannel AI Chatbot & CRM Penjualan #1">
+    <meta name="twitter:description" content="Otomatisasi layanan pelanggan & percepat closing penjualan lintas WhatsApp, Instagram, dan Facebook dengan kecerdasan buatan Gemini AI.">
+    <meta name="twitter:image" content="hero.jpg">
+
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Alpine.js CDN -->
