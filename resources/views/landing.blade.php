@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Wasilah AI - Platform Omnichannel CRM & AI Chatbot Otomatis #1</title>
     <meta name="description" content="Tingkatkan closing penjualan dan otomatisasi layanan pelanggan lintas WhatsApp, Instagram, dan Facebook dengan kecerdasan buatan Gemini AI.">
-    
+
     <!-- Google Fonts: Plus Jakarta Sans -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -83,7 +83,7 @@
     {{-- ========================================================================= --}}
     <nav class="fixed top-0 left-0 right-0 z-50 bg-white/85 backdrop-blur-md border-b border-slate-100 transition duration-300">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-            
+
             {{-- Brand Logo --}}
             <a href="/" class="flex items-center space-x-2.5 group">
                 <span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-tr from-teal-700 to-emerald-500 text-gold-300 font-black text-lg shadow-md shadow-teal-700/20 group-hover:scale-105 transition">
@@ -136,12 +136,12 @@
     {{-- 2. HERO SECTION DENGAN AKSEN MEWAH & BADGE EMAS                           --}}
     {{-- ========================================================================= --}}
     <section class="relative pt-32 pb-20 md:pt-40 md:pb-28 overflow-hidden bg-gradient-to-b from-teal-50/40 via-white to-white">
-        
+
         {{-- Background Glowing Blobs --}}
         <div class="absolute top-20 left-1/2 -translate-x-1/2 w-[600px] h-[350px] bg-gradient-to-tr from-teal-200/40 to-emerald-100/30 blur-3xl -z-10 rounded-full"></div>
 
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6">
-            
+
             {{-- Badge Top Pill --}}
             <div class="inline-flex items-center gap-2 rounded-full bg-teal-50 border border-teal-200/80 px-4 py-1.5 shadow-sm">
                 <span class="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -194,7 +194,7 @@
     {{-- ========================================================================= --}}
     <section id="fitur" class="py-24 bg-white border-t border-slate-100">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            
+
             <div class="text-center space-y-3 mb-16">
                 <span class="text-xs font-extrabold uppercase tracking-widest text-teal-700 bg-teal-50 px-3 py-1 rounded-full border border-teal-200">Fitur Unggulan</span>
                 <h2 class="text-3xl sm:text-4xl font-black text-slate-900">Segala yang Anda Butuhkan untuk Skalasi Penjualan</h2>
@@ -202,7 +202,7 @@
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                
+
                 {{-- Card 1: Omnichannel Workspace --}}
                 <div class="rounded-3xl border border-slate-200/80 bg-slate-50/50 p-6 space-y-4 hover:border-teal-500 hover:shadow-xl hover:shadow-teal-700/5 hover:-translate-y-1 transition duration-300">
                     <div class="h-12 w-12 rounded-2xl bg-gradient-to-tr from-teal-700 to-emerald-500 text-white flex items-center justify-center text-xl shadow-md">
@@ -258,7 +258,7 @@
     <section id="followup" class="py-24 bg-gradient-to-b from-slate-50 to-teal-50/30">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-                
+
                 {{-- Left Text & Process --}}
                 <div class="space-y-6">
                     <span class="text-xs font-extrabold uppercase tracking-wider text-amber-700 bg-amber-100 px-3 py-1 rounded-full">Solusi Siklus Penjualan Panjang</span>
@@ -269,7 +269,7 @@
                         Menjual paket dengan big deal seperti Properti dan Umrah membutuhkan pendekatan berminggu-minggu. Wasilah AI memastikan calon customer Anda disapa secara berkala dengan materi katalog, rincian harga, dan info sisa kuota secara otomatis.
                     </p>
 
-                    
+
                 </div>
 
                 {{-- Right Image --}}
@@ -303,7 +303,7 @@
     {{-- ========================================================================= --}}
     <section id="harga" class="py-24 bg-white">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            
+
             <div class="text-center space-y-3 mb-16">
                 <span class="text-xs font-extrabold uppercase tracking-widest text-teal-700 bg-teal-50 px-3 py-1 rounded-full border border-teal-200">Investasi Terbaik</span>
                 <h2 class="text-3xl sm:text-4xl font-black text-slate-900">Pilih Paket Sesuai Skala Bisnis Anda</h2>
@@ -311,7 +311,7 @@
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto items-stretch">
-                
+
                 {{-- Tier 1: Starter --}}
                 <div class="rounded-3xl border border-slate-200 bg-white p-8 flex flex-col justify-between space-y-6 hover:shadow-xl transition">
                     <div class="space-y-4">
@@ -322,7 +322,7 @@
                             <span class="text-xs text-slate-500 font-semibold">/ bulan</span>
                         </div>
                         <p class="text-xs text-slate-500">Cocok untuk toko online dan bisnis yang baru memulai otomasi chat.</p>
-                        
+
                         <ul class="space-y-2.5 text-xs text-slate-700 pt-4 border-t border-slate-100">
                             <li class="flex items-center gap-2"><span class="text-emerald-600 font-bold">✓</span> 1 Kantor Cabang</li>
                             <li class="flex items-center gap-2"><span class="text-emerald-600 font-bold">✓</span> 1 WhatsApp + 1 FB + 1 IG</li>
@@ -349,7 +349,7 @@
                             <span class="text-xs text-slate-500 font-semibold">/ bulan</span>
                         </div>
                         <p class="text-xs text-slate-600">Pilihan utama Bisnis Properti, dan Bisnis Multi-Cabang.</p>
-                        
+
                         <ul class="space-y-2.5 text-xs text-slate-800 pt-4 border-t border-teal-200/60 font-medium">
                             <li class="flex items-center gap-2"><span class="text-emerald-600 font-bold">✓</span> <b>Hingga 5 Kantor Cabang</b></li>
                             <li class="flex items-center gap-2"><span class="text-emerald-600 font-bold">✓</span> 5 WhatsApp + 5 FB + 5 IG</li>
@@ -374,7 +374,7 @@
                             <span class="text-xs text-slate-500 font-semibold">/ bulan per kantor cabang</span>
                         </div>
                         <p class="text-xs text-slate-500">Minimal 10 Kantor Cabang</p>
-                        
+
                         <ul class="space-y-2.5 text-xs text-slate-700 pt-4 border-t border-slate-100">
                             <li class="flex items-center gap-2"><span class="text-emerald-600 font-bold">✓</span> Unlimited Kantor Cabang</li>
                             <li class="flex items-center gap-2"><span class="text-emerald-600 font-bold">✓</span> Unlimited WA, FB dan Instagram</li>
@@ -399,14 +399,14 @@
     {{-- ========================================================================= --}}
     <section id="faq" class="py-24 bg-slate-50 border-t border-slate-200/60" x-data="{ activeFaq: null }">
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-            
+
             <div class="text-center space-y-3 mb-16">
                 <span class="text-xs font-extrabold uppercase tracking-widest text-teal-700 bg-teal-50 px-3 py-1 rounded-full border border-teal-200">FAQ</span>
                 <h2 class="text-3xl font-black text-slate-900">Pertanyaan yang Sering Diajukan</h2>
             </div>
 
             <div class="space-y-4">
-                
+
                 {{-- FAQ 1 --}}
                 <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                     <button @click="activeFaq = (activeFaq === 1 ? null : 1)" class="flex w-full items-center justify-between text-left text-sm font-bold text-slate-900">
@@ -466,16 +466,24 @@
     </section>
 
     {{-- ========================================================================= --}}
-    {{-- 8. FOOTER                                                                 --}}
+    {{-- 8. FOOTER DENGAN LINK KEBIJAKAN PRIVASI                                   --}}
     {{-- ========================================================================= --}}
     <footer class="bg-slate-950 text-slate-400 py-12 text-xs border-t border-slate-900">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
+
             <div class="flex items-center space-x-2">
                 <span class="text-gold-400 font-bold text-base">⚡</span>
                 <span class="font-extrabold text-white text-sm">Wasilah.ai</span>
-                <span>— Sarana Terbaik Layanan Pelanggan & Penjualan Otomatis.</span>
+                <span class="text-slate-500">— Sarana Terbaik Layanan Pelanggan & Penjualan Otomatis.</span>
             </div>
-            <div>
+
+            {{-- Navigasi Footer --}}
+            <div class="flex items-center space-x-6 text-slate-400 font-medium">
+                <a href="/kebijakan-privasi" class="hover:text-teal-400 transition underline underline-offset-4">Kebijakan Privasi</a>
+                <a href="/admin" class="hover:text-teal-400 transition">Masuk Dashboard</a>
+            </div>
+
+            <div class="text-slate-500">
                 © {{ date('Y') }} Wasilah AI SaaS. All rights reserved.
             </div>
         </div>

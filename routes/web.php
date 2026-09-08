@@ -8,6 +8,9 @@ Route::get('/', function () {
     return view('landing');
 })->name('landing');
 
+Route::get('/kebijakan-privasi', function () {
+    return view('privacy');
+})->name('privacy');
 
 
 Route::get('/workspace/{office:slug}/crm', OmnichannelWorkspace::class)
