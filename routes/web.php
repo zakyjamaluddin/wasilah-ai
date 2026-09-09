@@ -3,6 +3,8 @@
 use Illuminate\Support\Facades\Route;
 use App\Livewire\Workspace\OmnichannelWorkspace;
 use App\Http\Controllers\Auth\FacebookOAuthController;
+use App\Http\Controllers\CheckoutController;
+
 
 Route::get('/', function () {
     return view('landing');
@@ -23,3 +25,9 @@ Route::get('/workspace/{office:slug}/auth/facebook', [FacebookOAuthController::c
     ->name('auth.facebook.redirect');
 Route::get('/auth/facebook/callback', [FacebookOAuthController::class, 'callback'])
     ->name('auth.facebook.callback');
+
+
+// 🔥 CHECKOUT & REGISTRATION ROUTES
+Route::get('/checkout', [CheckoutController::class, 'show'])->name('checkout.show');
+Route::post('/checkout/process', [CheckoutController::class, 'process'])->name('checkout.process');
+Route::get('/checkout/invoice/{invoice}', [CheckoutController::class, 'invoice'])->name('checkout.invoice');

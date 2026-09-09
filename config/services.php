@@ -47,4 +47,13 @@ return [
         'graph_url' => 'https://graph.facebook.com/v19.0',
     ],
 
+    'duitku' => [
+        'merchant_code' => env('DUITKU_MERCHANT_CODE'),
+        'api_key' => env('DUITKU_API_KEY'),
+        'is_production' => env('DUITKU_IS_PRODUCTION', false),
+        'api_url' => env('DUITKU_IS_PRODUCTION', false)
+            ? 'https://api-prod.duitku.com/api/merchant/v2/inquiry'
+            : 'https://sandbox.duitku.com/webapi/api/merchant/v2/inquiry',
+    ],
+
 ];

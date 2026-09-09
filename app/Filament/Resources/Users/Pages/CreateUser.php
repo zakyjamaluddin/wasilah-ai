@@ -13,10 +13,10 @@ class CreateUser extends CreateRecord
     protected function afterCreate(): void
     {
         $user = $this->record;
-        $roleName = $this->data['roles'] ?? null;
+        $roleName = $this->data['role_name'] ?? null;
         $offices = $this->data['offices'] ?? [];
 
-        // 🔥 TEMPELKAN ROLE DENGAN OFFICE_ID YANG TEPAT UNTUK SETIAP KANTOR
+        // 🔥 TEMPELKAN ROLE KE SETIAP KANTOR YANG DIPILIH
         if ($roleName && !empty($offices)) {
             foreach ($offices as $officeId) {
                 setPermissionsTeamId($officeId);

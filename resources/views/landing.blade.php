@@ -331,9 +331,12 @@
                             <li class="flex items-center gap-2"><span class="text-emerald-600 font-bold">✓</span> Maksimal 2.000 Kontak Leads</li>
                         </ul>
                     </div>
-                    <a href="http://lynk.id/zakyjamal/zlgw19zge6p9/checkout" target="_blank" class="w-full text-center py-3 rounded-xl border-2 border-slate-200 font-bold text-slate-700 hover:border-teal-600 hover:text-teal-700 transition text-xs">
-                        Pilih Paket Starter
+                    <a href="/checkout?plan=starter" class="w-full text-center py-3 rounded-xl border-2 border-slate-200 font-bold text-slate-700 hover:border-teal-600 hover:text-teal-700 transition text-xs">
+                        Pilih Paket Starter 🚀
                     </a>
+                    {{-- <a href="http://lynk.id/zakyjamal/zlgw19zge6p9/checkout" target="_blank" class="w-full text-center py-3 rounded-xl border-2 border-slate-200 font-bold text-slate-700 hover:border-teal-600 hover:text-teal-700 transition text-xs">
+                        Pilih Paket Starter
+                    </a> --}}
                 </div>
 
                 {{-- Tier 2: PRO (Featured - Luxury Gold & Emerald) --}}
@@ -359,7 +362,7 @@
                             <li class="flex items-center gap-2"><span class="text-emerald-600 font-bold">✓</span> Unlimited Kontak Leads</li>
                         </ul>
                     </div>
-                    <a href="http://lynk.id/zakyjamal/n6pkx389k914/checkout" target="_blank" class="w-full text-center py-3.5 rounded-xl bg-gradient-to-r from-teal-700 to-emerald-600 font-extrabold text-white shadow-lg shadow-teal-700/25 hover:shadow-teal-700/40 hover:scale-105 transition text-xs">
+                    <a href="/checkout?plan=pro" class="w-full text-center py-3.5 rounded-xl bg-gradient-to-r from-teal-700 to-emerald-600 font-extrabold text-white shadow-lg shadow-teal-700/25 hover:shadow-teal-700/40 hover:scale-105 transition text-xs">
                         Ambil Paket Pro Sekarang 🚀
                     </a>
                 </div>

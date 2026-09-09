@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Users\Tables;
 
+use App\Models\User;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -27,14 +28,18 @@ class UsersTable
                     ->icon('heroicon-o-envelope'),
 
                 // Kolom Role Pengguna
-                BadgeColumn::make('roles.name')
+
+                // Kolom Role Pengguna di Tabel
+                TextColumn::make('roles.name')
                     ->label('Peran (Role)')
+                    ->badge()
                     ->colors([
                         'danger' => 'super_admin',
                         'warning' => 'admin',
                         'info' => 'kepala_cabang',
                         'success' => 'staff_cs',
-                    ]),
+                    ])
+                    ->default(fn (User $record) => $record->roles()->first()?->name ?? 'Admin'),
 
                 // Kolom Cabang yang Diberi Akses
                 TagsColumn::make('offices.name')

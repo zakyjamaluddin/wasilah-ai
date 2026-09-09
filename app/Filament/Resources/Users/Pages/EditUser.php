@@ -21,14 +21,18 @@ class EditUser extends EditRecord
     protected function mutateFormDataBeforeFill(array $data): array
     {
         $user = $this->record;
-        $data['roles'] = $user->roles()->first()?->name;
+        $firstOffice = $user->offices->first();
+        if ($firstOffice) {
+            setPermissionsTeamId($firstOffice->id);
+        }
+        $data['role_name'] = $user->roles()->first()?->name;
         return $data;
     }
 
     protected function afterSave(): void
     {
         $user = $this->record;
-        $roleName = $this->data['roles'] ?? null;
+        $roleName = $this->data['role_name'] ?? null;
         $offices = $this->data['offices'] ?? [];
 
         if ($roleName && !empty($offices)) {

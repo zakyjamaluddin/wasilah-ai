@@ -39,10 +39,9 @@ class UserForm
                             ->required(fn (string $operation): bool => $operation === 'create')
                             ->helperText('Kosongkan jika tidak ingin mengubah password saat edit.'),
 
-                         Select::make('roles')
+                         Select::make('role_name')
                             ->label('Peran / Role Pengguna')
                             ->options(fn () => \Spatie\Permission\Models\Role::pluck('name', 'name'))
-                            ->dehydrated(false)
                             ->required(),
 
                         // 🔥 2. PILIH KANTOR CABANG YANG DIBERI AKSES
@@ -52,7 +51,6 @@ class UserForm
                             ->multiple()
                             ->preload()
                             ->required()
-                            ->helperText('Staff ini HANYA akan bisa membuka dan melihat data di kantor cabang yang dicentang di sini.')
                             ->columnSpanFull(),
                     ])->columns(2),
             ])->columns(1);
