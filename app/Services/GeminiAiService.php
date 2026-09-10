@@ -61,6 +61,7 @@ Tugas Anda:
 2. Gunakan DATA PENGETAHUAN di bawah ini sebagai sumber kebenaran mutlak. JANGAN mengarang jawaban jika tidak ada di data pengetahuan. Jika tidak tahu, arahkan untuk menunggu admin manusia.
 3. Nama customer saat ini: '{$contact->name}'.
 4. Jika customer mengirim gambar, analisis gambar tersebut dan hubungkan dengan layanan bisnis kita.
+5. Akhiri jawaban dengan pertanyaan persuatif ala sales yang bisa memicu menggali kebutuhan customer
 
 DATA PENGETAHUAN BISNIS KITA:
 {$knowledge}
@@ -215,7 +216,8 @@ DATA PENGETAHUAN KANTOR:
 ATURAN OUTPUT:
 1. Sapa nama '{$contact->name}' secara ramah dalam Bahasa Indonesia.
 2. Tulis pesan persuasif yang mengalir natural (maksimal 2-3 kalimat).
-3. Langsung berikan teks pesan siap kirim ke WhatsApp tanpa tanda petik atau kalimat pembuka tambahan.";
+3. Langsung berikan teks pesan siap kirim ke WhatsApp tanpa tanda petik atau kalimat pembuka tambahan.
+4. Akhiri dengan pertanyaan persuasif ala sales yang bisa memancing kebutuhan calon customer";
 
         try {
             $endpoint = "https://generativelanguage.googleapis.com/v1beta/models/{$this->model}:generateContent?key={$this->apiKey}";
@@ -249,71 +251,5 @@ ATURAN OUTPUT:
             return null;
         }
     }
-    public function generateFollowUpMessageLama(Conversation $conversation, string $aiInstructionPrompt): ?string
-    {
-        $office = $conversation->office;
-        $contact = $conversation->contact;
-
-        // 1. Ambil Materi Knowledge Base
-        $knowledge = KnowledgeBase::where('office_id', $office->id)
-            ->where('is_active', true)
-            ->pluck('content')
-            ->filter()
-            ->implode("\n\n---\n\n");
-
-        // 2. Ambil 5 Chat Terakhir & Ringkasan Kebutuhan
-        $recentMessages = $conversation->messages()->orderBy('id', 'desc')->limit(5)->get()->reverse();
-        $chatHistoryText = "";
-        foreach ($recentMessages as $msg) {
-            $role = $msg->sender_type === 'customer' ? 'Customer' : 'Sales/CS';
-            $chatHistoryText .= "{$role}: {$msg->message_body}\n";
-        }
-
-        $leadSummary = $contact->ai_summary ?: "Customer baru bertanya informasi.";
-
-        // 3. Susun Prompt Follow-Up yang Kuat
-        $systemInstruction = "Anda adalah Sales & CS profesional dari '{$office->name}'.
-TUGAS ANDA: Buat 1 pesan follow-up lanjutan untuk customer bernama '{$contact->name}'.
-
-INSTRUKSI KHUSUS DARI OWNER:
-\"{$aiInstructionPrompt}\"
-
-KONTEKS CUSTOMER:
-- Ringkasan Kebutuhan: {$leadSummary}
-- Obrolan Sebelumnya:
-{$chatHistoryText}
-
-DATA PENGETAHUAN PRODUK/KANTOR:
-{$knowledge}
-
-ATURAN PESAN:
-1. Sapa nama customer dengan hangat (Bahasa Indonesia).
-2. Tulis pesan follow-up yang singkat, persuasif, dan tidak kaku (maksimal 3-4 kalimat).
-3. Langsung kembalikan teks pesan siap kirim (tanpa tanda petik atau kata pengantar tambahan).";
-
-        try {
-            $endpoint = "https://generativelanguage.googleapis.com/v1beta/models/{$this->model}:generateContent?key={$this->apiKey}";
-
-            $response = Http::withHeaders(['Content-Type' => 'application/json'])
-                ->timeout(20)
-                ->post($endpoint, [
-                    'contents' => [
-                        ['role' => 'user', 'parts' => [['text' => $systemInstruction]]]
-                    ],
-                    'generationConfig' => [
-                        'temperature' => 0.7,
-                        'maxOutputTokens' => 300,
-                    ]
-                ]);
-
-            if ($response->successful()) {
-                $reply = $response->json('candidates.0.content.parts.0.text');
-                return trim($reply);
-            }
-            return null;
-        } catch (\Exception $e) {
-            Log::error("[Gemini FollowUp Error] " . $e->getMessage());
-            return null;
-        }
-    }
+    
 }
