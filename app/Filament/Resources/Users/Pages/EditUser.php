@@ -35,11 +35,13 @@ class EditUser extends EditRecord
         $roleName = $this->data['role_name'] ?? null;
         $offices = $this->data['offices'] ?? [];
 
+
         if ($roleName && !empty($offices)) {
             foreach ($offices as $officeId) {
                 setPermissionsTeamId($officeId);
                 $user->syncRoles([$roleName]);
             }
+
         }
     }
 }

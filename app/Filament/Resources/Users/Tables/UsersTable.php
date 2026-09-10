@@ -15,6 +15,7 @@ class UsersTable
 {
     public static function configure(Table $table): Table
     {
+
         return $table
             ->columns([
                 TextColumn::make('name')
@@ -29,8 +30,9 @@ class UsersTable
 
                 // Kolom Role Pengguna
 
-                // Kolom Role Pengguna di Tabel
-                TextColumn::make('roles.name')
+
+                // 🔥 KOLOM ROLE PRESISI LANGSUNG DARI DATABASE
+                TextColumn::make('custom_role')
                     ->label('Peran (Role)')
                     ->badge()
                     ->colors([
@@ -39,7 +41,14 @@ class UsersTable
                         'info' => 'kepala_cabang',
                         'success' => 'staff_cs',
                     ])
-                    ->default(fn (User $record) => $record->roles()->first()?->name ?? 'Admin'),
+                    ->getStateUsing(function (User $record) {
+                        $roleName = \Illuminate\Support\Facades\DB::table('model_has_roles')
+                            ->join('roles', 'model_has_roles.role_id', '=', 'roles.id')
+                            ->where('model_has_roles.model_id', $record->id)
+                            ->value('roles.name');
+
+                        return $roleName ?: 'Belum Ada Role';
+                    }),
 
                 // Kolom Cabang yang Diberi Akses
                 TagsColumn::make('offices.name')
