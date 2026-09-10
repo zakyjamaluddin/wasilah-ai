@@ -27,7 +27,24 @@ class AppServiceProvider extends ServiceProvider
     {
         // 👑 SUPER ADMIN GOD MODE BYPASS
         Gate::before(function ($user, $ability) {
-            return ($user->id === 1 || $user->hasRole('super_admin')) ? true : null;
+            // return ($user->id === 1 || $user->hasRole('super_admin')) ? true : null;
+
+            if ($user->id === 1) {
+                return true;
+            }
+
+
+            // 2. Sinkronkan Nomor Kantor yang Sedang Aktif ke Spatie
+            if ($tenant = Filament::getTenant()) {
+                setPermissionsTeamId($tenant->id);
+            }
+
+            // 3. Jika User Memiliki Role 'super_admin' atau 'admin' di Kantor Ini -> Beri Akses Penuh!
+            if ($user->hasRole('super_admin') || $user->hasRole('admin')) {
+                return true;
+            }
+
+            return null;
         });
 
         // 🔥 2. OTOMATIS SINKRONKAN OFFICE_ID DENGAN SPATIE PERMISSIONS
