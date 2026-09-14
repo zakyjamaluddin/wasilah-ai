@@ -78,7 +78,7 @@ class CheckoutController extends Controller
         ]);
 
         // Buat Snap Token di Midtrans
-        $paymentGateway->createSnapTransaction($order);
+        $paymentGateway->createTransaction($order);
 
         // 📧 Kirim Email Tagihan ke Klien
         try {
