@@ -33,6 +33,7 @@ Route::get('/auth/facebook/callback', [FacebookOAuthController::class, 'callback
 Route::get('/checkout', [CheckoutController::class, 'show'])->name('checkout.show');
 Route::post('/checkout/process', [CheckoutController::class, 'process'])->name('checkout.process');
 Route::get('/checkout/invoice/{invoice}', [CheckoutController::class, 'invoice'])->name('checkout.invoice');
+Route::post('/checkout/pay/{invoice}', [CheckoutController::class, 'pay'])->name('checkout.pay');
 
 // 🔍 RUTE DIAGNOSA DUITKU LANGSUNG DI BROWSER
 Route::get('/test-duitku', function (PaymentGatewayService $gateway) {

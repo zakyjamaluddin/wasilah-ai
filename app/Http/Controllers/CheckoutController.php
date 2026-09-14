@@ -91,9 +91,33 @@ class CheckoutController extends Controller
     /**
      * 3. Halaman Pembayaran Tagihan (Invoice Screen & Snap Popup)
      */
-    public function invoice(string $invoiceNumber)
+   /**
+     * 3. Halaman Tagihan & Tampilan Pilihan Metode Pembayaran
+     */
+    public function invoice(string $invoiceNumber, PaymentGatewayService $paymentGateway)
     {
         $order = Order::where('invoice_number', $invoiceNumber)->firstOrFail();
-        return view('checkout.invoice', compact('order'));
+        
+        // Ambil daftar bank & QRIS yang tersedia dari Duitku
+        $paymentMethods = $paymentGateway->getAvailablePaymentMethods((int) $order->amount);
+
+        return view('checkout.invoice', compact('order', 'paymentMethods'));
+    }
+
+    /**
+     * 4. Eksekusi Pembayaran Sesuai Metode yang Dipilih Customer
+     */
+    public function pay(Request $request, string $invoiceNumber, PaymentGatewayService $paymentGateway)
+    {
+        $order = Order::where('invoice_number', $invoiceNumber)->firstOrFail();
+        $selectedMethod = $request->input('payment_method', 'SP');
+
+        $paymentUrl = $paymentGateway->createTransaction($order, $selectedMethod);
+
+        if ($paymentUrl) {
+            return redirect()->away($paymentUrl);
+        }
+
+        return back()->with('error', 'Gagal menghubungkan ke metode pembayaran. Silakan coba metode lain.');
     }
 }
