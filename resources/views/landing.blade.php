@@ -469,26 +469,66 @@
     </section>
 
     {{-- ========================================================================= --}}
-    {{-- 8. FOOTER DENGAN LINK KEBIJAKAN PRIVASI                                   --}}
+    {{-- FOOTER LENGKAP DENGAN INFORMASI KONTAK & ALAMAT USAHA                     --}}
     {{-- ========================================================================= --}}
-    <footer class="bg-slate-950 text-slate-400 py-12 text-xs border-t border-slate-900">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
+    <footer class="bg-slate-950 text-slate-400 pt-16 pb-12 text-xs border-t border-slate-900">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
+            
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-12">
+                
+                {{-- Kolom 1: Profil Brand (Lebar 5/12) --}}
+                <div class="md:col-span-5 space-y-4">
+                    <div class="flex items-center space-x-2.5">
+                        <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-teal-700 to-emerald-600 text-gold-400 font-black text-base shadow-sm">
+                            ⚡
+                        </span>
+                        <span class="text-xl font-black text-white tracking-tight">
+                            Wasilah<span class="text-teal-400">.ai</span>
+                        </span>
+                    </div>
+                    <p class="text-slate-400 leading-relaxed max-w-sm">
+                        Platform Omnichannel AI Chatbot & CRM Penjualan #1 di Indonesia. Sarana terbaik untuk otomasi layanan pelanggan dan akselerasi closing bisnis Anda.
+                    </p>
+                </div>
 
-            <div class="flex items-center space-x-2">
-                <span class="text-gold-400 font-bold text-base">⚡</span>
-                <span class="font-extrabold text-white text-sm">Wasilah.ai</span>
-                <span class="text-slate-500">— Sarana Terbaik Layanan Pelanggan & Penjualan Otomatis.</span>
+                {{-- Kolom 2: Kontak & Alamat Usaha (Lebar 4/12) --}}
+                <div class="md:col-span-4 space-y-3">
+                    <h4 class="text-sm font-extrabold text-white uppercase tracking-wider text-teal-400">Kontak & Lokasi Usaha</h4>
+                    <ul class="space-y-2.5 text-slate-300">
+                        <li class="flex items-start space-x-2.5">
+                            <span class="text-base flex-shrink-0">📍</span>
+                            <span>Desa Mayangrejo, Kecamatan Kalitidu, Kabupaten Bojonegoro, Jawa Timur</span>
+                        </li>
+                        <li class="flex items-center space-x-2.5">
+                            <span class="text-base flex-shrink-0">📞</span>
+                            <a href="https://wa.me/6285748776014" target="_blank" class="hover:text-teal-400 transition font-medium">0857-4877-6014</a>
+                        </li>
+                        <li class="flex items-center space-x-2.5">
+                            <span class="text-base flex-shrink-0">✉️</span>
+                            <a href="mailto:zakyjamaluddin7@gmail.com" class="hover:text-teal-400 transition font-medium">zakyjamaluddin7@gmail.com</a>
+                        </li>
+                    </ul>
+                </div>
+
+                {{-- Kolom 3: Navigasi & Legal (Lebar 3/12) --}}
+                <div class="md:col-span-3 space-y-3">
+                    <h4 class="text-sm font-extrabold text-white uppercase tracking-wider text-teal-400">Tautan Penting</h4>
+                    <ul class="space-y-2">
+                        <li><a href="/kebijakan-privasi" class="hover:text-teal-400 transition">Kebijakan Privasi</a></li>
+                        <li><a href="#fitur" class="hover:text-teal-400 transition">Fitur Utama</a></li>
+                        <li><a href="#harga" class="hover:text-teal-400 transition">Paket Harga</a></li>
+                        <li><a href="/admin" class="hover:text-teal-400 transition text-amber-400 font-semibold">Masuk Dashboard ↗</a></li>
+                    </ul>
+                </div>
+
             </div>
 
-            {{-- Navigasi Footer --}}
-            <div class="flex items-center space-x-6 text-slate-400 font-medium">
-                <a href="/kebijakan-privasi" class="hover:text-teal-400 transition underline underline-offset-4">Kebijakan Privasi</a>
-                <a href="/admin" class="hover:text-teal-400 transition">Masuk Dashboard</a>
+            {{-- Baris Copyright Bawah --}}
+            <div class="pt-8 border-t border-slate-900 flex flex-col sm:flex-row items-center justify-between gap-4 text-slate-500 text-[11px]">
+                <p>© {{ date('Y') }} Wasilah AI SaaS. Seluruh hak cipta dilindungi undang-undang.</p>
+                <p class="text-slate-600">Ditenagai oleh Wasilah Engine & Gemini AI Vision.</p>
             </div>
 
-            <div class="text-slate-500">
-                © {{ date('Y') }} Wasilah AI SaaS. All rights reserved.
-            </div>
         </div>
     </footer>
 
