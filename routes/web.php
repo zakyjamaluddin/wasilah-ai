@@ -6,6 +6,7 @@ use App\Http\Controllers\Auth\FacebookOAuthController;
 use App\Http\Controllers\CheckoutController;
 use App\Models\Order;
 use App\Services\PaymentGatewayService;
+use App\Models\Channel;
 
 
 Route::get('/', function () {
@@ -74,5 +75,48 @@ Route::get('/test-duitku', function (PaymentGatewayService $gateway) {
         'SIGNATURE_MD5'   => $signature,
         'HTTP_STATUS'     => $response->status(),
         'RESPON_DARI_DUITKU' => $response->json() ?? $response->body(),
+    ]);
+});
+
+
+Route::get('/test-instagram', function () {
+    // 1. Ambil Channel Instagram di Database
+    $channel = Channel::where('type', 'instagram')->latest()->first();
+
+    if (!$channel) {
+        return response()->json(['error' => 'Belum ada Channel bertipe Instagram di database!'], 404);
+    }
+
+    $token = $channel->credentials['access_token'] ?? '';
+    $savedIgId = $channel->identifier;
+
+    // 2. Ambil Channel Facebook pasangannya untuk mencari ID Instagram Bisnis yang Asli
+    $fbChannel = Channel::where('type', 'facebook')->latest()->first();
+    $pageId = $fbChannel ? $fbChannel->identifier : null;
+
+    $realIgData = null;
+    if ($pageId && $token) {
+        $realIgData = Illuminate\Support\Facades\Http::get("https://graph.facebook.com/v19.0/{$pageId}?fields=instagram_business_account,name&access_token={$token}")->json();
+    }
+
+    // 3. Cek Izin Token Instagram di Server Meta
+    $permissionsRes = Illuminate\Support\Facades\Http::get("https://graph.facebook.com/v19.0/me/permissions?access_token={$token}")->json();
+    $grantedPermissions = collect($permissionsRes['data'] ?? [])->where('status', 'granted')->pluck('permission')->toArray();
+
+    // 4. Cek apakah ID di Database sudah cocok dengan ID Asli Instagram
+    $actualIgId = $realIgData['instagram_business_account']['id'] ?? 'TIDAK_DITEMUKAN';
+    $isIdMatched = ($savedIgId === $actualIgId);
+
+    return response()->json([
+        '1_STATUS_BOT_DI_DB'         => $channel->is_bot_enabled ? 'AKTIF (ON)' : 'MATI (OFF)',
+        '2_ID_INSTAGRAM_DI_DATABASE' => $savedIgId,
+        '3_ID_INSTAGRAM_ASLI_META'   => $actualIgId,
+        '4_APAKAH_ID_COCOK'          => $isIdMatched ? '✅ COCOK (SIAP TERIMA PESAN)' : '❌ BEDA / SALAH ID (Penyebab Pesan Tidak Dibalas)',
+        '5_IZIN_TOKEN_INSTAGRAM'     => [
+            'instagram_basic'            => in_array('instagram_basic', $grantedPermissions) ? '✅ ADA' : '❌ KURANG',
+            'instagram_manage_messages' => in_array('instagram_manage_messages', $grantedPermissions) ? '✅ ADA' : '❌ KURANG',
+            'instagram_manage_comments' => in_array('instagram_manage_comments', $grantedPermissions) ? '✅ ADA' : '❌ KURANG',
+        ],
+        '6_DETAIL_AKUN_META'         => $realIgData,
     ]);
 });

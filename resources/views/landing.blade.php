@@ -473,9 +473,9 @@
     {{-- ========================================================================= --}}
     <footer class="bg-slate-950 text-slate-400 pt-16 pb-12 text-xs border-t border-slate-900">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
-            
+
             <div class="grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-12">
-                
+
                 {{-- Kolom 1: Profil Brand (Lebar 5/12) --}}
                 <div class="md:col-span-5 space-y-4">
                     <div class="flex items-center space-x-2.5">
