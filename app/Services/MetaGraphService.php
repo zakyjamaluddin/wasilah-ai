@@ -113,14 +113,28 @@ class MetaGraphService
     /**
      * Daftarkan Webhook Otomatis (Membedakan Format Facebook vs Instagram)
      */
+    /**
+     * Daftarkan & Verifikasi Webhook Otomatis (Membedakan Facebook Page vs Instagram)
+     */
     public function subscribePageWebhook(string $identifier, string $pageAccessToken, string $type = 'facebook'): array
     {
-        // 🔥 JIKA INSTAGRAM GUNAKAN messages,comments | JIKA FACEBOOK GUNAKAN feed,messages
-        $subscribedFields = ($type === 'instagram') ? 'messages,comments' : 'feed,messages';
-
         try {
+            // 🎯 A. JIKA INSTAGRAM: Verifikasi Akses Akun Instagram Langsung
+            if ($type === 'instagram') {
+                $response = Http::get("{$this->graphUrl}/{$identifier}", [
+                    'fields' => 'id,username',
+                    'access_token' => $pageAccessToken,
+                ]);
+
+                if ($response->successful() && !empty($response->json('id'))) {
+                    return ['success' => true];
+                }
+                return $response->json() ?? ['error' => ['message' => 'Gagal verifikasi akun Instagram']];
+            }
+
+            // 🎯 B. JIKA FACEBOOK PAGE: Daftarkan subscribed_apps
             $response = Http::post("{$this->graphUrl}/{$identifier}/subscribed_apps", [
-                'subscribed_fields' => $subscribedFields,
+                'subscribed_fields' => 'feed,messages',
                 'access_token' => $pageAccessToken,
             ]);
             return $response->json() ?? [];
