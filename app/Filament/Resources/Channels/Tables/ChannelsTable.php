@@ -72,6 +72,7 @@ class ChannelsTable
                     ->modalCancelActionLabel('Tutup')
                     ->modalContent(fn (Channel $record) => view('filament.qr-modal-wrapper', ['channelId' => $record->id])),
 
+                // ACTION TEST KONEKSI & RE-SUBSCRIBE (FB & IG)
                 Action::make('syncMeta')
                     ->label('Cek Koneksi')
                     ->icon('heroicon-o-arrow-path')
@@ -84,19 +85,20 @@ class ChannelsTable
                             return;
                         }
 
-                        $res = $meta->subscribePageWebhook($record->identifier, $token);
+                        // 🔥 Teruskan $record->type (facebook / instagram)
+                        $res = $meta->subscribePageWebhook($record->identifier, $token, $record->type);
 
                         if (!empty($res['success']) && $res['success'] === true) {
                             $record->update(['status' => 'connected']);
                             Notification::make()
-                                ->title("✅ Halaman {$record->name} Berhasil Terhubung & Webhook Aktif!")
+                                ->title("✅ Saluran {$record->name} Berhasil Terhubung & Webhook Aktif!")
                                 ->success()
                                 ->send();
                         } else {
                             $record->update(['status' => 'disconnected']);
-                            $errMsg = $res['error']['message'] ?? 'Gagal menghubungkan ke Facebook Meta';
+                            $errMsg = $res['error']['message'] ?? 'Gagal menghubungkan ke Meta';
                             Notification::make()
-                                ->title('Gagal Terhubung ke Meta: ' . $errMsg)
+                                ->title('Gagal Terhubung: ' . $errMsg)
                                 ->danger()
                                 ->send();
                         }

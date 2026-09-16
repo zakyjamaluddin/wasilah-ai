@@ -111,13 +111,16 @@ class MetaGraphService
 
 
     /**
-     * Daftarkan Webhook Halaman Facebook Otomatis (Subscribed Apps)
+     * Daftarkan Webhook Otomatis (Membedakan Format Facebook vs Instagram)
      */
-    public function subscribePageWebhook(string $pageId, string $pageAccessToken): array
+    public function subscribePageWebhook(string $identifier, string $pageAccessToken, string $type = 'facebook'): array
     {
+        // 🔥 JIKA INSTAGRAM GUNAKAN messages,comments | JIKA FACEBOOK GUNAKAN feed,messages
+        $subscribedFields = ($type === 'instagram') ? 'messages,comments' : 'feed,messages';
+
         try {
-            $response = Http::post("{$this->graphUrl}/{$pageId}/subscribed_apps", [
-                'subscribed_fields' => 'feed,messages',
+            $response = Http::post("{$this->graphUrl}/{$identifier}/subscribed_apps", [
+                'subscribed_fields' => $subscribedFields,
                 'access_token' => $pageAccessToken,
             ]);
             return $response->json() ?? [];
