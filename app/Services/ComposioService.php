@@ -3,19 +3,14 @@
 namespace App\Services;
 
 use App\Models\Office;
+use App\Models\Channel;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class ComposioService
 {
-    /**
-     * Base URL REST API Composio.dev Versi 3.1
-     */
     protected string $baseUrl = 'https://backend.composio.dev/api/v3.1';
 
-    /**
-     * Client HTTP dengan Header API Key resmi Composio
-     */
     protected function client(Office $office)
     {
         $composioAccount = $office->composioAccount;
@@ -31,19 +26,12 @@ class ComposioService
         ])->baseUrl($this->baseUrl)->timeout(30);
     }
 
-    /**
-     * 1. DAPATKAN / AUTO-CREATE AUTH CONFIG ID UNTUK TOOLKIT (facebook / instagram)
-     */
-    /**
-     * 1. DAPATKAN / AUTO-CREATE AUTH CONFIG ID UNTUK TOOLKIT (facebook / instagram)
-     */
     public function getAuthConfigId(Office $office, string $toolkitSlug): ?string
     {
         try {
             $client = $this->client($office);
             $slug = strtolower($toolkitSlug);
 
-            // 1. Cek apakah auth config sudah pernah dibuat di akun ini
             $response = $client->get('/auth_configs', [
                 'toolkit_slug' => $slug,
             ]);
@@ -55,7 +43,6 @@ class ComposioService
                 }
             }
 
-            // 2. Jika belum ada, buatkan Managed Auth Config baru dengan format objek resmi v3.1
             $createRes = $client->post('/auth_configs', [
                 'toolkit' => [
                     'slug' => $slug,
@@ -70,37 +57,22 @@ class ComposioService
                 return $created['auth_config']['id'] ?? $created['id'] ?? null;
             }
 
-            Log::error("Gagal membuat AuthConfig untuk {$slug}:", [
-                'status' => $createRes->status(),
-                'body'   => $createRes->body(),
-            ]);
-
             return null;
         } catch (\Throwable $e) {
-            Log::error("Exception getAuthConfigId ({$slug}): " . $e->getMessage());
+            Log::error("Exception getAuthConfigId ({$toolkitSlug}): " . $e->getMessage());
             return null;
         }
     }
 
-    /**
-     * 2. INSIASI SESI OAUTH COMPOSIO (FB PAGE & INSTAGRAM)
-     * Menggunakan endpoint resmi: POST /api/v3.1/connected_accounts/link
-     */
     public function initiateOAuth(Office $office, string $appName = 'facebook'): ?string
     {
         try {
             $toolkit = strtolower($appName) === 'instagram' ? 'instagram' : 'facebook';
             $userId  = "office_{$office->id}_{$office->slug}";
 
-            // 1. Dapatkan Auth Config ID
             $authConfigId = $this->getAuthConfigId($office, $toolkit);
+            if (!$authConfigId) return null;
 
-            if (!$authConfigId) {
-                Log::error("Composio: AuthConfig ID tidak ditemukan untuk toolkit [{$toolkit}]");
-                return null;
-            }
-
-            // 2. Buat Auth Link Session resmi di Composio v3.1
             $callbackUrl = url("/admin/{$office->slug}/channels");
 
             $response = $this->client($office)->post('/connected_accounts/link', [
@@ -111,29 +83,16 @@ class ComposioService
 
             if ($response->successful()) {
                 $data = $response->json();
-                Log::info("Composio Auth Link Created successfully for Office: {$office->slug}", $data);
-
-                // Composio v3.1 mengembalikan 'redirect_url'
                 return $data['redirect_url'] ?? $data['redirectUrl'] ?? $data['url'] ?? null;
             }
 
-            Log::error('Composio initiateOAuth Failed:', [
-                'office' => $office->slug,
-                'status' => $response->status(),
-                'body'   => $response->body(),
-            ]);
-
             return null;
         } catch (\Throwable $e) {
-            Log::error('Exception in Composio initiateOAuth: ' . $e->getMessage());
+            Log::error("Exception in Composio initiateOAuth: " . $e->getMessage());
             return null;
         }
     }
 
-    /**
-     * 3. EKSEKUTOR TOOL / ACTION COMPOSIO v3.1
-     * Menggunakan endpoint resmi: POST /api/v3.1/tools/execute/{tool_slug}
-     */
     public function executeAction(Office $office, string $toolSlug, array $params = []): array
     {
         try {
@@ -147,7 +106,7 @@ class ComposioService
 
             $json = $response->json();
 
-            if ($response->successful() && ($json['successful'] ?? true)) {
+            if ($response->successful() && ($json['successful'] ?? true) && empty($json['error'])) {
                 return [
                     'success' => true,
                     'data'    => $json,
@@ -161,7 +120,7 @@ class ComposioService
 
             return [
                 'success' => false,
-                'error'   => $json['error'] ?? 'Gagal mengeksekusi aksi Composio.',
+                'error'   => $json['error'] ?? $json['message'] ?? 'Gagal mengeksekusi aksi Composio.',
             ];
         } catch (\Throwable $e) {
             Log::error("Exception Composio Action [{$toolSlug}]: " . $e->getMessage());
@@ -173,46 +132,86 @@ class ComposioService
     }
 
     /**
-     * 4. Aksi Cepat: Balas Komentar Facebook
+     * Helper Cerdas: Dapatkan Page ID Fanspage Facebook yang Terhubung
+     */
+    public function getFacebookPageId(Office $office): ?string
+    {
+        // 1. Cek apakah sudah tersimpan di channel database
+        $channel = Channel::where('office_id', $office->id)->where('type', 'facebook')->first();
+        if ($channel && !empty($channel->identifier) && is_numeric($channel->identifier)) {
+            return $channel->identifier;
+        }
+
+        // 2. Jika belum, tarik daftar Halaman dari Composio
+        $res = $this->executeAction($office, 'FACEBOOK_LIST_MANAGED_PAGES');
+        if ($res['success'] && !empty($res['data']['data'])) {
+            $pages = $res['data']['data'];
+            $firstPage = $pages[0] ?? null;
+            $pageId = $firstPage['id'] ?? null;
+
+            if ($pageId && $channel) {
+                $channel->update(['identifier' => $pageId]);
+            }
+            return $pageId;
+        }
+
+        return null;
+    }
+
+    /**
+     * 1. Kirim DM Facebook Messenger
+     */
+    public function sendFacebookMessenger(Office $office, string $recipientId, string $message, ?string $pageId = null): array
+    {
+        $pageId = $pageId ?: $this->getFacebookPageId($office);
+
+        if (!$pageId) {
+            return [
+                'success' => false,
+                'error'   => 'Facebook Page ID belum ditemukan. Pastikan akun FB sudah terhubung.',
+            ];
+        }
+
+        return $this->executeAction($office, 'FACEBOOK_SEND_MESSAGE', [
+            'page_id'      => (string) $pageId,
+            'recipient_id' => (string) $recipientId,
+            'message_text' => $message,
+        ]);
+    }
+
+    /**
+     * 2. Balas Komentar Facebook Post
      */
     public function replyFacebookComment(Office $office, string $commentId, string $message): array
     {
-        return $this->executeAction($office, 'FACEBOOK_CREATE_POST_COMMENT', [
-            'comment_id' => $commentId,
-            'message'    => $message,
-        ]);
-    }
-
-    /**
-     * 5. Aksi Cepat: Kirim DM Facebook Messenger
-     */
-    public function sendFacebookMessenger(Office $office, string $recipientId, string $message): array
-    {
-        return $this->executeAction($office, 'FACEBOOK_SEND_MESSAGE', [
-            'recipient_id' => $recipientId,
+        return $this->executeAction($office, 'FACEBOOK_CREATE_COMMENT', [
+            'object_id'    => (string) $commentId,
             'message'      => $message,
+            'message_text' => $message,
         ]);
     }
 
     /**
-     * 6. Aksi Cepat: Balas Komentar Instagram (Post / Reels)
-     */
-    public function replyInstagramComment(Office $office, string $commentId, string $message): array
-    {
-        return $this->executeAction($office, 'INSTAGRAM_CREATE_MEDIA_COMMENT_REPLY', [
-            'comment_id' => $commentId,
-            'message'    => $message,
-        ]);
-    }
-
-    /**
-     * 7. Aksi Cepat: Kirim DM Instagram
+     * 3. Kirim DM Instagram
      */
     public function sendInstagramDm(Office $office, string $recipientId, string $message): array
     {
         return $this->executeAction($office, 'INSTAGRAM_SEND_DIRECT_MESSAGE', [
-            'recipient_id' => $recipientId,
+            'recipient_id' => (string) $recipientId,
+            'message_text' => $message,
             'message'      => $message,
+        ]);
+    }
+
+    /**
+     * 4. Balas Komentar Instagram
+     */
+    public function replyInstagramComment(Office $office, string $commentId, string $message): array
+    {
+        return $this->executeAction($office, 'INSTAGRAM_CREATE_MEDIA_COMMENT_REPLY', [
+            'comment_id'   => (string) $commentId,
+            'message'      => $message,
+            'message_text' => $message,
         ]);
     }
 }
