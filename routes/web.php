@@ -128,17 +128,42 @@ Route::get('/test-instagram', function () {
 
 
 
-Route::get('/debug-composio', function (ComposioService $composio) {
+Route::get('/debug-composio', function (ComposioService $composio, GeminiAiService $gemini) {
+    $results = [];
     $office = Office::with('composioAccount')->first();
-    
-    // 1. Tarik profil pengguna dari Facebook via Composio
-    $userProfile = $composio->executeAction($office, 'FACEBOOK_GET_CURRENT_USER');
+    $targetPsid = '28703283273815'; // ID Customer pengirim chat
 
-    // 2. Ambil Channel Facebook
+    // 1. Coba Tarik Page / Obrolan untuk Mendapatkan Page ID
+    $pageConvs = $composio->executeAction($office, 'FACEBOOK_GET_PAGE_CONVERSATIONS');
+    $results['page_conversations_response'] = $pageConvs;
+
+    // 2. Ambil Channel Facebook Kantor
     $channel = Channel::where('office_id', $office->id)->where('type', 'facebook')->first();
 
-    return response()->json([
-        'user_profile_response' => $userProfile,
-        'current_channel_identifier' => $channel?->identifier,
-    ], 200, [], JSON_PRETTY_PRINT);
+    // Jika Page ID belum terisi, kita coba ambil ID atau izinkan input manual
+    $pageId = $channel?->identifier;
+
+    // 3. JIKA PAGE ID BELUM ADA, CEK DARI DATA CONVERSATION COMPOSIO
+    if (empty($pageId) && !empty($pageConvs['data']['data']['data'])) {
+        // Contoh jika page id ada di respons conversation
+        $firstItem = $pageConvs['data']['data']['data'][0] ?? [];
+        $pageId = $firstItem['page_id'] ?? null;
+        if ($pageId && $channel) {
+            $channel->update(['identifier' => $pageId]);
+        }
+    }
+
+    $results['page_id_used'] = $pageId;
+
+    // 4. JIKA PAGE ID SUDAH TERSEDIA, EKSEKUSI KIRIM BALASAN AI LANGSUNG KE MESSENGER!
+    if ($pageId) {
+        $aiMessage = "Halo Kak! Salam hangat dari Wasilah AI. Kami siap membantu pertanyaan Anda terkait layanan digital dan aplikasi.";
+        
+        $sendResponse = $composio->sendFacebookMessenger($office, $targetPsid, $aiMessage, $pageId);
+        $results['send_message_response'] = $sendResponse;
+    } else {
+        $results['send_message_response'] = 'Page ID belum terisi di Channel identifier. Silakan cek hasil JSON di atas untuk melihat Page ID Anda, atau masukkan Page ID di panel Channel Wasilah AI.';
+    }
+
+    return response()->json($results, 200, [], JSON_PRETTY_PRINT);
 });
