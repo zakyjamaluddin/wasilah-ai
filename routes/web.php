@@ -7,7 +7,11 @@ use App\Http\Controllers\CheckoutController;
 use App\Models\Order;
 use App\Services\PaymentGatewayService;
 use App\Models\Channel;
-
+use App\Models\Office;
+use App\Models\Contact;
+use App\Models\Conversation;
+use App\Services\GeminiAiService;
+use App\Services\ComposioService;
 
 Route::get('/', function () {
     return view('landing');
@@ -119,4 +123,70 @@ Route::get('/test-instagram', function () {
         ],
         '6_DETAIL_AKUN_META'         => $realIgData,
     ]);
+});
+
+
+
+
+Route::get('/debug-composio', function (GeminiAiService $gemini, ComposioService $composio) {
+    $results = [];
+
+    // 1. CEK KANTOR & AKUN COMPOSIO
+    $office = Office::with('composioAccount')->first();
+    $results['1_office'] = [
+        'id' => $office?->id,
+        'name' => $office?->name,
+        'composio_account_id' => $office?->composio_account_id,
+        'has_api_key' => !empty($office?->composioAccount?->api_key),
+        'api_key_masked' => $office?->composioAccount?->api_key ? substr($office->composioAccount->api_key, 0, 8) . '...' : null,
+    ];
+
+    // 2. CEK CHANNEL FACEBOOK
+    $channel = Channel::where('office_id', $office?->id)->where('type', 'facebook')->first();
+    $results['2_channel_facebook'] = [
+        'found' => $channel ? true : false,
+        'name' => $channel?->name,
+        'status' => $channel?->status,
+        'is_bot_enabled' => $channel?->is_bot_enabled,
+    ];
+
+    // 3. CEK KONTAK TERAKHIR
+    $contact = Contact::where('office_id', $office?->id)->latest('id')->first();
+    $results['3_latest_contact'] = [
+        'id' => $contact?->id,
+        'name' => $contact?->name,
+        'fb_user_id' => $contact?->fb_user_id,
+        'pipeline_stage' => $contact?->pipeline_stage,
+    ];
+
+    // 4. TEST GEMINI AI RESPONSE
+    $conv = Conversation::where('office_id', $office?->id)->latest('id')->first();
+    if ($conv) {
+        try {
+            $aiReply = $gemini->generateReply($conv);
+            $results['4_gemini_test'] = [
+                'success' => true,
+                'reply' => $aiReply,
+            ];
+        } catch (\Throwable $e) {
+            $results['4_gemini_test'] = [
+                'success' => false,
+                'error' => $e->getMessage(),
+            ];
+        }
+    } else {
+        $results['4_gemini_test'] = 'Belum ada percakapan (Conversation) di database.';
+    }
+
+    // 5. TEST TEMBAK PESAN BALASAN COMPOSIO KE FB USER
+    $recipientId = $contact?->fb_user_id;
+    if ($office && $recipientId) {
+        $testMsg = "Halo! Ini adalah tes balasan manual dari Wasilah AI Debugger (" . now()->format('H:i:s') . ")";
+        $sendResult = $composio->sendFacebookMessenger($office, $recipientId, $testMsg);
+        $results['5_composio_send_test'] = $sendResult;
+    } else {
+        $results['5_composio_send_test'] = 'Tidak dapat mengetes kirim: Kontak atau fb_user_id belum ditemukan.';
+    }
+
+    return response()->json($results, 200, [], JSON_PRETTY_PRINT);
 });
