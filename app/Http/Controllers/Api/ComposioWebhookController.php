@@ -215,11 +215,16 @@ class ComposioWebhookController extends Controller
      */
     protected function handleFacebookMessenger(array $data, Office $office, ComposioService $composio, GeminiAiService $gemini)
     {
-        $senderId = $data['sender']['id'] ?? $data['sender_id'] ?? null;
-        $userText = $data['message']['text'] ?? $data['text'] ?? '';
+        // Ekstrak Sender PSID dari berbagai kemungkinan nesting payload Composio
+        $senderId = $data['sender']['id'] ?? $data['sender_id'] ?? $data['from']['id'] ?? $data['user_id'] ?? null;
+        $userText = $data['message']['text'] ?? $data['text'] ?? $data['message'] ?? '';
         $messageId = $data['message']['mid'] ?? $data['id'] ?? null;
 
-        if (!$senderId || empty($userText) || ($data['is_echo'] ?? false)) return;
+        // Cegah echo / pesan yang dikirim oleh Fanspage sendiri
+        $pageId = $composio->getFacebookPageId($office);
+        if (!$senderId || empty($userText) || ($data['is_echo'] ?? false) || $senderId === $pageId) {
+            return;
+        }
 
         // Anti-Duplicate Lock
         if ($messageId) {
@@ -231,8 +236,9 @@ class ComposioWebhookController extends Controller
         $channel = Channel::where('office_id', $office->id)->where('type', 'facebook')->first();
         if (!$channel || !$channel->is_bot_enabled) return;
 
+        // Simpan / Ambil Kontak Prospek dengan PSID Asli
         $contact = Contact::firstOrCreate(
-            ['office_id' => $office->id, 'fb_user_id' => $senderId],
+            ['office_id' => $office->id, 'fb_user_id' => (string) $senderId],
             ['name' => 'FB User ' . substr($senderId, -4), 'pipeline_stage' => 'Cold']
         );
 
@@ -241,28 +247,33 @@ class ComposioWebhookController extends Controller
             ['channel_type' => 'facebook', 'is_bot_active' => true, 'last_message_at' => now()]
         );
 
+        // Rekam Pesan Customer ke CRM
         Message::create([
-            'office_id' => $office->id,
-            'conversation_id' => $conversation->id,
-            'sender_type' => 'customer',
-            'message_type' => 'text',
-            'message_body' => $userText,
+            'office_id'           => $office->id,
+            'conversation_id'     => $conversation->id,
+            'sender_type'         => 'customer',
+            'message_type'        => 'text',
+            'message_body'        => $userText,
             'external_message_id' => $messageId,
         ]);
 
+        // Minta Gemini AI Menjawab
         $aiReply = $gemini->generateReply($conversation);
 
         if ($aiReply) {
-            $composio->sendFacebookMessenger($office, $senderId, $aiReply);
+            // Kirim Balasan AI ke Messenger
+            $composio->sendFacebookMessenger($office, (string) $senderId, $aiReply, $pageId);
 
+            // Simpan Balasan Bot ke CRM
             Message::create([
-                'office_id' => $office->id,
-                'conversation_id' => $conversation->id,
-                'sender_type' => 'bot',
-                'message_type' => 'text',
-                'message_body' => $aiReply,
+                'office_id'           => $office->id,
+                'conversation_id'     => $conversation->id,
+                'sender_type'         => 'bot',
+                'message_type'        => 'text',
+                'message_body'        => $aiReply,
             ]);
 
+            // Auto-Score Lead
             $gemini->analyzeAndSummarizeLead($conversation);
         }
     }

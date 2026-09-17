@@ -4,14 +4,8 @@ use App\Http\Controllers\Auth\FacebookOAuthController;
 use App\Http\Controllers\CheckoutController;
 use App\Livewire\Workspace\OmnichannelWorkspace;
 use App\Models\Channel;
-use App\Models\Contact;
-use App\Models\Conversation;
-use App\Models\Office;
 use App\Models\Order;
-use App\Services\ComposioService;
-use App\Services\GeminiAiService;
 use App\Services\PaymentGatewayService;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -127,20 +121,3 @@ Route::get('/test-instagram', function () {
 });
 
 
-
-Route::get('/debug-composio', function (ComposioService $composio) {
-    $office = Office::with('composioAccount')->first();
-    $pageId = "422099137659003"; // Page ID Fanspage Zaky Apps
-    $realPsid = "9821294751327905"; // PSID Nyata Zaky Jamaluddin
-
-    // 1. Eksekusi Pengiriman Pesan Messenger ke PSID Asli
-    $aiMessage = "Halo Mas Zaky! 🎉 Pesan ini dikirim otomatis oleh Wasilah AI melalui integrasi Composio.dev (" . now()->format('H:i:s') . "). Sistem v2 Anda resmi bekerja sempurna!";
-    
-    $sendResult = $composio->sendFacebookMessenger($office, $realPsid, $aiMessage, $pageId);
-
-    return response()->json([
-        'page_id' => $pageId,
-        'target_psid' => $realPsid,
-        'send_result' => $sendResult,
-    ], 200, [], JSON_PRETTY_PRINT);
-});
