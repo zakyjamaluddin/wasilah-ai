@@ -19,14 +19,22 @@ class ComposioWebhookController extends Controller
     public function handle(Request $request, ComposioService $composio, GeminiAiService $gemini)
     {
         $payload = $request->all();
+
+        // 🔥 Simpan rekaman payload webhook ke Cache agar bisa diintip langsung di browser
+        \Illuminate\Support\Facades\Cache::put('last_composio_raw_webhook', [
+            'time' => now()->format('Y-m-d H:i:s'),
+            'headers' => $request->headers->all(),
+            'payload' => $payload,
+        ], now()->addHours(24));
+
         Log::info('📥 [Composio Webhook Received]:', $payload);
 
         // 1. Ekstrak User ID / Entity ID (Mendukung user_id, userUuid, entity_id)
-        $userId = $payload['user_id'] 
-            ?? $payload['userUuid'] 
-            ?? $payload['entity_id'] 
-            ?? $payload['data']['user_id'] 
-            ?? $payload['data']['userUuid'] 
+        $userId = $payload['user_id']
+            ?? $payload['userUuid']
+            ?? $payload['entity_id']
+            ?? $payload['data']['user_id']
+            ?? $payload['data']['userUuid']
             ?? null;
 
         if (!$userId) {
@@ -93,8 +101,8 @@ class ComposioWebhookController extends Controller
 
     protected function verifySignature(Request $request, string $secret): bool
     {
-        $signature = $request->header('x-composio-signature') 
-            ?? $request->header('x-webhook-signature') 
+        $signature = $request->header('x-composio-signature')
+            ?? $request->header('x-webhook-signature')
             ?? $request->header('webhook-signature');
 
         if (!$signature) return true; // Fallback jika header tidak dikirimkan
@@ -112,20 +120,20 @@ class ComposioWebhookController extends Controller
         $pageId = $composio->getFacebookPageId($office);
 
         // Ekstrak Sender PSID dari berbagai format data Composio
-        $senderId = $data['sender']['id'] 
-            ?? $data['sender_id'] 
-            ?? $data['from']['id'] 
-            ?? $data['user_id'] 
+        $senderId = $data['sender']['id']
+            ?? $data['sender_id']
+            ?? $data['from']['id']
+            ?? $data['user_id']
             ?? ($data['messaging'][0]['sender']['id'] ?? null);
 
         // Ekstrak Teks Pesan
-        $userText = $data['message']['text'] 
-            ?? $data['text'] 
-            ?? $data['message'] 
+        $userText = $data['message']['text']
+            ?? $data['text']
+            ?? $data['message']
             ?? ($data['messaging'][0]['message']['text'] ?? '');
 
-        $messageId = $data['message']['mid'] 
-            ?? $data['id'] 
+        $messageId = $data['message']['mid']
+            ?? $data['id']
             ?? ($data['messaging'][0]['message']['mid'] ?? null);
 
         // Validasi: Jangan balas jika pesan kosong, atau jika berasal dari Page itu sendiri (echo)

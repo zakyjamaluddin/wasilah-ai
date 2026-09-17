@@ -121,3 +121,54 @@ Route::get('/test-instagram', function () {
 });
 
 
+use App\Models\Office;
+use App\Models\Channel;
+use App\Services\ComposioService;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Cache;
+
+Route::get('/debug-composio', function (ComposioService $composio) {
+    $office = Office::with('composioAccount')->first();
+    $apiKey = $office->composioAccount?->api_key;
+    $userId = "office_{$office->id}_{$office->slug}";
+
+    // 1. CEK DAFTAR TRIGGER / WEBHOOK YANG AKTIF DI COMPOSIO UNTUK KANTOR INI
+    $activeTriggersRes = Http::withHeaders([
+        'x-api-key' => $apiKey,
+    ])->get("https://backend.composio.dev/api/v3.1/triggers/active", [
+        'user_id' => $userId,
+    ]);
+
+    $activeTriggers = $activeTriggersRes->json();
+
+    // 2. JIKA PARAMETER ?enable_trigger=1 DIKLIK, KITA AKTIFKAN TRIGGER SECARA PAKSA VIA API
+    $enableResult = null;
+    if (request()->has('enable_trigger')) {
+        $triggerSlug = request()->query('enable_trigger', 'facebook_message_received');
+        
+        $enableRes = Http::withHeaders([
+            'x-api-key' => $apiKey,
+            'Content-Type' => 'application/json',
+        ])->post("https://backend.composio.dev/api/v3.1/triggers/enable", [
+            'user_id'      => $userId,
+            'trigger_slug' => $triggerSlug,
+        ]);
+        
+        $enableResult = $enableRes->json();
+    }
+
+    // 3. AMBIL LOG WEBHOOK TERAKHIR YANG PERNAH DITERIMA SERVER KITA
+    $lastReceivedWebhook = Cache::get('last_composio_raw_webhook', 'Belum ada webhook yang masuk ke /api/composio/webhook');
+
+    return response()->json([
+        'office_user_id' => $userId,
+        'active_triggers_in_composio' => $activeTriggers,
+        'last_webhook_received_by_wasilah' => $lastReceivedWebhook,
+        'manual_enable_trigger_result' => $enableResult,
+        'panduan_tindakan' => [
+            'cek_active_triggers' => 'Lihat apakah active_triggers_in_composio memiliki trigger facebook/message.',
+            'jika_kosong' => 'Buka https://wasilah-ai.my.id/debug-composio?enable_trigger=facebook_message_received untuk mengaktifkannya otomatis!',
+        ]
+    ], 200, [], JSON_PRETTY_PRINT);
+});
+
