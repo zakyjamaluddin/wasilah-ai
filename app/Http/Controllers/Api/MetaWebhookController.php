@@ -18,9 +18,6 @@ use Illuminate\Support\Str;
 
 class MetaWebhookController extends Controller
 {
-    /**
-     * 1. Handshake Verifikasi Webhook Meta (GET)
-     */
     public function verify(Request $request)
     {
         $mode = $request->query('hub_mode');
@@ -37,8 +34,40 @@ class MetaWebhookController extends Controller
     }
 
     /**
-     * 2. Penangkap Event DM & Komentar FB / IG (POST) ➡️ Dibalas oleh Composio
+     * Helper Cerdas: Menemukan Channel Kantor yang Tepat Berdasarkan Page ID
      */
+    protected function resolveChannel(string $pageId, string $object): ?Channel
+    {
+        $platformType = $object === 'instagram' ? 'instagram' : 'facebook';
+
+        // 1. Prioritas Utama: Cari channel yang Page ID-nya cocok persis
+        $channel = Channel::with('office.composioAccount')
+            ->where('type', $platformType)
+            ->where('identifier', $pageId)
+            ->first();
+
+        if ($channel) {
+            return $channel;
+        }
+
+        // 2. Jika belum ada yang cocok, cari Channel di Kantor yang memiliki Akun Composio Aktif
+        $channel = Channel::with('office.composioAccount')
+            ->where('type', $platformType)
+            ->whereHas('office', function ($q) {
+                $q->whereNotNull('composio_account_id');
+            })
+            ->first();
+
+        // Kunci Page ID ini ke channel kantor aktif tersebut
+        if ($channel) {
+            $channel->update(['identifier' => $pageId]);
+            Log::info("🔗 [Auto-Bind Page ID] Page ID {$pageId} berhasil dikaitkan ke Kantor: {$channel->office->name}");
+            return $channel;
+        }
+
+        return null;
+    }
+
     public function handle(Request $request, ComposioService $composio, GeminiAiService $gemini)
     {
         $body = $request->all();
@@ -51,23 +80,16 @@ class MetaWebhookController extends Controller
             foreach ($body['entry'] as $entry) {
                 $pageId = (string) ($entry['id'] ?? '');
 
-                // Cari Channel Kantor di database (cocokkan Page ID atau tipe platform)
-                $channel = Channel::with('office.composioAccount')
-                    ->where('identifier', $pageId)
-                    ->orWhere(function ($q) use ($object) {
-                        $q->where('type', $object === 'instagram' ? 'instagram' : 'facebook');
-                    })
-                    ->first();
+                // 🔥 RESOLVE CHANNEL DENGAN AMAN & TEPAT SASARAN
+                $channel = $this->resolveChannel($pageId, $object);
 
-                if (!$channel || !$channel->office) continue;
+                if (!$channel || !$channel->office) {
+                    Log::warning("⚠️ Channel tidak ditemukan untuk Page ID: {$pageId}");
+                    continue;
+                }
 
                 $office = $channel->office;
                 $officeId = $office->id;
-
-                // Pastikan identifier channel tersimpan dengan Page ID yang benar
-                if (empty($channel->identifier) || $channel->identifier !== $pageId) {
-                    $channel->update(['identifier' => $pageId]);
-                }
 
                 // =============================================================
                 // A. EVENT: PESAN DM (MESSENGER & INSTAGRAM DM)
@@ -75,18 +97,15 @@ class MetaWebhookController extends Controller
                 if (!empty($entry['messaging'])) {
                     foreach ($entry['messaging'] as $messaging) {
                         $senderId = (string) ($messaging['sender']['id'] ?? '');
-                        $recipientId = (string) ($messaging['recipient']['id'] ?? '');
                         $text = $messaging['message']['text'] ?? '';
                         $messageId = $messaging['message']['mid'] ?? null;
                         $attachments = $messaging['message']['attachments'] ?? [];
 
-                        // Abaikan pesan echo / pesan dari fanspage itu sendiri
                         if ($senderId === $pageId || ($messaging['message']['is_echo'] ?? false)) continue;
 
                         $mediaUrl = null;
                         $messageType = 'text';
 
-                        // 🛡️ DOWNLOAD MEDIA LAMPIRAN JIKA ADA (FOTO / VIDEO / DOKUMEN)
                         if (!empty($attachments)) {
                             $firstAttachment = $attachments[0];
                             $attachType = $firstAttachment['type'] ?? 'image';
@@ -123,7 +142,6 @@ class MetaWebhookController extends Controller
 
                         if (empty($text) && empty($mediaUrl)) continue;
 
-                        // Anti-Duplicate Lock
                         if ($messageId) {
                             $lockKey = "meta_inbound_msg_{$messageId}";
                             if (Cache::has($lockKey)) continue;
@@ -132,19 +150,19 @@ class MetaWebhookController extends Controller
 
                         $channelType = $object === 'instagram' ? 'ig_dm' : 'fb_dm';
 
-                        // 1. Simpan / Ambil Kontak Customer
+                        // 1. Kontak
                         $contact = Contact::firstOrCreate(
                             ['office_id' => $officeId, 'fb_user_id' => $senderId],
                             ['name' => ($object === 'instagram' ? 'IG User ' : 'FB User ') . substr($senderId, -4), 'pipeline_stage' => 'lead']
                         );
 
-                        // 2. Buat / Ambil Room Percakapan
+                        // 2. Percakapan
                         $conversation = Conversation::firstOrCreate(
                             ['office_id' => $officeId, 'channel_id' => $channel->id, 'contact_id' => $contact->id],
                             ['channel_type' => $channelType, 'is_bot_active' => $channel->is_bot_enabled]
                         );
 
-                        // 3. Simpan Pesan Masuk Customer ke CRM
+                        // 3. Simpan Pesan Masuk
                         Message::create([
                             'conversation_id'     => $conversation->id,
                             'office_id'           => $officeId,
@@ -172,16 +190,14 @@ class MetaWebhookController extends Controller
                             $botReply = $gemini->generateReply($conversation, $localImagePath);
 
                             if ($botReply) {
-                                // 🔥 EKSEKUSI PENGIRIMAN VIA COMPOSIO
                                 if ($object === 'instagram') {
                                     $sendRes = $composio->sendInstagramDm($office, $senderId, $botReply);
                                 } else {
                                     $sendRes = $composio->sendFacebookMessenger($office, $senderId, $botReply, $pageId);
                                 }
 
-                                Log::info("🚀 [Composio DM Send Response]:", $sendRes);
+                                Log::info("🚀 [Composio DM Send Response via {$office->slug}]:", $sendRes);
 
-                                // Simpan Pesan Balasan Bot ke CRM
                                 Message::create([
                                     'conversation_id' => $conversation->id,
                                     'office_id'       => $officeId,
@@ -198,7 +214,7 @@ class MetaWebhookController extends Controller
                 }
 
                 // =============================================================
-                // B. EVENT: FEED POSTINGAN & BALAS KOMENTAR (FB & IG)
+                // B. EVENT: FEED & KOMENTAR (FB & IG)
                 // =============================================================
                 if (!empty($entry['changes'])) {
                     foreach ($entry['changes'] as $change) {
@@ -212,7 +228,6 @@ class MetaWebhookController extends Controller
                             $firstCommentText = $channel->credentials['auto_first_comment'] ?? null;
 
                             if ($postId && $firstCommentText) {
-                                Log::info("Posting Auto First Comment ke Post ID via Composio: {$postId}");
                                 $composio->replyFacebookComment($office, (string)$postId, $firstCommentText);
                             }
                         }
@@ -256,7 +271,6 @@ class MetaWebhookController extends Controller
 
                                 $aiReply = $gemini->generateReply($conversation);
                                 if ($aiReply) {
-                                    // 🔥 Balas Komentar Facebook via Composio
                                     $composio->replyFacebookComment($office, $commentId, $aiReply);
 
                                     Message::create([
@@ -310,7 +324,6 @@ class MetaWebhookController extends Controller
 
                                 $aiReply = $gemini->generateReply($conversation);
                                 if ($aiReply) {
-                                    // 🔥 Balas Komentar Instagram via Composio
                                     $composio->replyInstagramComment($office, $commentId, $aiReply);
 
                                     Message::create([
