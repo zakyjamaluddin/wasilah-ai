@@ -98,9 +98,12 @@ class ComposioService
         try {
             $userId = "office_{$office->id}_{$office->slug}";
 
+            // 🔥 KUNCI PERBAIKAN: Jika params kosong, jadikan JSON Object {} (bukan array [])
+            $arguments = empty($params) ? (object) [] : $params;
+
             $response = $this->client($office)->post("/tools/execute/{$toolSlug}", [
                 'user_id'   => $userId,
-                'arguments' => $params,
+                'arguments' => $arguments,
                 'version'   => 'latest',
             ]);
 
