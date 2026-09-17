@@ -128,28 +128,17 @@ Route::get('/test-instagram', function () {
 
 
 
-Route::get('/debug-composio', function () {
+Route::get('/debug-composio', function (ComposioService $composio) {
     $office = Office::with('composioAccount')->first();
-    $apiKey = $office->composioAccount?->api_key;
-    $userId = "office_{$office->id}_{$office->slug}";
+    
+    // 1. Tarik profil pengguna dari Facebook via Composio
+    $userProfile = $composio->executeAction($office, 'FACEBOOK_GET_CURRENT_USER');
 
-    // 1. Tarik daftar nama tool Facebook yang didukung Composio
-    $response = Http::withHeaders([
-        'x-api-key' => $apiKey,
-    ])->get("https://backend.composio.dev/api/v3.1/tools", [
-        'toolkit_slug' => 'facebook',
-    ]);
-
-    $tools = $response->json('items') ?? $response->json('data') ?? [];
-    $toolNames = array_map(function($t) {
-        return [
-            'name' => $t['name'] ?? $t['slug'] ?? null,
-            'description' => $t['description'] ?? '',
-        ];
-    }, is_array($tools) ? $tools : []);
+    // 2. Ambil Channel Facebook
+    $channel = Channel::where('office_id', $office->id)->where('type', 'facebook')->first();
 
     return response()->json([
-        'total_tools_found' => count($toolNames),
-        'tools' => $toolNames,
+        'user_profile_response' => $userProfile,
+        'current_channel_identifier' => $channel?->identifier,
     ], 200, [], JSON_PRETTY_PRINT);
 });
