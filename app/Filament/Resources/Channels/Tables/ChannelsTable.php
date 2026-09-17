@@ -77,7 +77,7 @@ class ChannelsTable
                     ->modalCancelActionLabel('Tutup')
                     ->modalContent(fn (Channel $record) => view('filament.qr-modal-wrapper', ['channelId' => $record->id])),
 
-                // 🔵 2. FACEBOOK: ROW ACTION HUBUNGKAN VIA COMPOSIO
+                // 🔵 2. FACEBOOK: ROW ACTIONS
                 Action::make('connect_facebook_row')
                     ->label(fn (Channel $record) => $record->status === 'connected' ? 'Hubungkan Ulang' : 'Hubungkan Facebook')
                     ->icon('heroicon-m-link')
@@ -96,16 +96,37 @@ class ChannelsTable
                         $authUrl = $composio->initiateOAuth($currentOffice, 'facebook');
 
                         if ($authUrl) {
-                            // Tandai status sementara bahwa channel sedang dalam proses otorisasi
-                            $record->update(['status' => 'connected']);
                             return redirect()->away($authUrl);
                         }
 
                         Notification::make()
                             ->title('Gagal Memulai Sesi Composio')
-                            ->body('Periksa kembali API Key dan konfigurasi Composio Anda.')
                             ->danger()
                             ->send();
+                    }),
+
+                // 🔄 2B. AUTO-SYNC / CEK FANS PAGE FACEBOOK
+                Action::make('sync_facebook_page')
+                    ->label('Sinkronkan Halaman')
+                    ->icon('heroicon-o-arrow-path')
+                    ->color('success')
+                    ->visible(fn (Channel $record) => $record->type === 'facebook')
+                    ->action(function (Channel $record, ComposioService $composio) use ($currentOffice) {
+                        $result = $composio->syncFacebookPages($currentOffice, $record);
+
+                        if ($result['success']) {
+                            Notification::make()
+                                ->title('✅ Fanspage Berhasil Disinkronkan!')
+                                ->body("Halaman: <b>{$result['page_name']}</b> (ID: {$result['page_id']}) berhasil terhubung otomatis.")
+                                ->success()
+                                ->send();
+                        } else {
+                            Notification::make()
+                                ->title('Gagal Sinkronisasi Halaman')
+                                ->body($result['error'])
+                                ->danger()
+                                ->send();
+                        }
                     }),
 
                 // 📷 3. INSTAGRAM: ROW ACTION HUBUNGKAN VIA COMPOSIO

@@ -130,20 +130,42 @@ Route::get('/test-instagram', function () {
 
 Route::get('/debug-composio', function (ComposioService $composio) {
     $office = Office::with('composioAccount')->first();
-    $targetPsid = '28703283273815'; // ID Customer pengirim chat
+    $pageId = "422099137659003";
 
-    // 1. Eksekusi Auto-Sync (Tarik Page ID & Nama Fanspage otomatis)
-    $syncResult = $composio->syncFacebookPages($office);
+    // 1. Tarik Daftar Percakapan Asli di Fanspage Zaky Apps
+    $convs = $composio->executeAction($office, 'FACEBOOK_GET_PAGE_CONVERSATIONS', [
+        'page_id' => $pageId,
+    ]);
 
-    // 2. Jika Auto-Sync Berhasil, Langsung Tembak Pesan Balasan AI!
+    // 2. Ekstrak Pengirim/PSID Asli dari Percakapan Terbaru
+    $items = $convs['data']['data']['data'] ?? $convs['data']['data'] ?? [];
+    $firstConv = $items[0] ?? null;
+    $realPsid = null;
+    $senderName = null;
+
+    if ($firstConv && !empty($firstConv['senders']['data'])) {
+        foreach ($firstConv['senders']['data'] as $sender) {
+            // Ambil sender yang bukan Fanspage itu sendiri
+            if (($sender['id'] ?? '') !== $pageId) {
+                $realPsid = $sender['id'];
+                $senderName = $sender['name'] ?? 'User';
+                break;
+            }
+        }
+    }
+
+    // 3. Tembakkan Pesan Balasan AI ke PSID Asli Tersebut
     $sendResult = null;
-    if ($syncResult['success']) {
-        $aiMessage = "Halo Kak! Salam hangat dari Wasilah AI. Fanspage kami berhasil terhubung otomatis secara instan (" . now()->format('H:i:s') . "). Ada yang bisa kami bantu?";
-        $sendResult = $composio->sendFacebookMessenger($office, $targetPsid, $aiMessage);
+    if ($realPsid) {
+        $aiMessage = "Halo Kak {$senderName}! Salam dari Wasilah AI. Kami siap melayani kebutuhan Anda.";
+        $sendResult = $composio->sendFacebookMessenger($office, $realPsid, $aiMessage, $pageId);
     }
 
     return response()->json([
-        '1_auto_sync_facebook_result' => $syncResult,
-        '2_live_messenger_send_result' => $sendResult,
+        'page_id' => $pageId,
+        'detected_real_psid' => $realPsid,
+        'detected_sender_name' => $senderName,
+        'live_send_result' => $sendResult,
+        'raw_conversations' => $convs,
     ], 200, [], JSON_PRETTY_PRINT);
 });
