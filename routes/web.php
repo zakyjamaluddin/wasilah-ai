@@ -130,42 +130,17 @@ Route::get('/test-instagram', function () {
 
 Route::get('/debug-composio', function (ComposioService $composio) {
     $office = Office::with('composioAccount')->first();
-    $pageId = "422099137659003";
+    $pageId = "422099137659003"; // Page ID Fanspage Zaky Apps
+    $realPsid = "9821294751327905"; // PSID Nyata Zaky Jamaluddin
 
-    // 1. Tarik Daftar Percakapan Asli di Fanspage Zaky Apps
-    $convs = $composio->executeAction($office, 'FACEBOOK_GET_PAGE_CONVERSATIONS', [
-        'page_id' => $pageId,
-    ]);
-
-    // 2. Ekstrak Pengirim/PSID Asli dari Percakapan Terbaru
-    $items = $convs['data']['data']['data'] ?? $convs['data']['data'] ?? [];
-    $firstConv = $items[0] ?? null;
-    $realPsid = null;
-    $senderName = null;
-
-    if ($firstConv && !empty($firstConv['senders']['data'])) {
-        foreach ($firstConv['senders']['data'] as $sender) {
-            // Ambil sender yang bukan Fanspage itu sendiri
-            if (($sender['id'] ?? '') !== $pageId) {
-                $realPsid = $sender['id'];
-                $senderName = $sender['name'] ?? 'User';
-                break;
-            }
-        }
-    }
-
-    // 3. Tembakkan Pesan Balasan AI ke PSID Asli Tersebut
-    $sendResult = null;
-    if ($realPsid) {
-        $aiMessage = "Halo Kak {$senderName}! Salam dari Wasilah AI. Kami siap melayani kebutuhan Anda.";
-        $sendResult = $composio->sendFacebookMessenger($office, $realPsid, $aiMessage, $pageId);
-    }
+    // 1. Eksekusi Pengiriman Pesan Messenger ke PSID Asli
+    $aiMessage = "Halo Mas Zaky! 🎉 Pesan ini dikirim otomatis oleh Wasilah AI melalui integrasi Composio.dev (" . now()->format('H:i:s') . "). Sistem v2 Anda resmi bekerja sempurna!";
+    
+    $sendResult = $composio->sendFacebookMessenger($office, $realPsid, $aiMessage, $pageId);
 
     return response()->json([
         'page_id' => $pageId,
-        'detected_real_psid' => $realPsid,
-        'detected_sender_name' => $senderName,
-        'live_send_result' => $sendResult,
-        'raw_conversations' => $convs,
+        'target_psid' => $realPsid,
+        'send_result' => $sendResult,
     ], 200, [], JSON_PRETTY_PRINT);
 });
