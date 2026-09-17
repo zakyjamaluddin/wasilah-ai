@@ -134,32 +134,7 @@ class ComposioService
         }
     }
 
-    /**
-     * Helper Cerdas: Dapatkan Page ID Fanspage Facebook yang Terhubung
-     */
-    public function getFacebookPageId(Office $office): ?string
-    {
-        // 1. Cek apakah sudah tersimpan di channel database
-        $channel = Channel::where('office_id', $office->id)->where('type', 'facebook')->first();
-        if ($channel && !empty($channel->identifier) && is_numeric($channel->identifier)) {
-            return $channel->identifier;
-        }
-
-        // 2. Jika belum, tarik daftar Halaman dari Composio
-        $res = $this->executeAction($office, 'FACEBOOK_LIST_MANAGED_PAGES');
-        if ($res['success'] && !empty($res['data']['data'])) {
-            $pages = $res['data']['data'];
-            $firstPage = $pages[0] ?? null;
-            $pageId = $firstPage['id'] ?? null;
-
-            if ($pageId && $channel) {
-                $channel->update(['identifier' => $pageId]);
-            }
-            return $pageId;
-        }
-
-        return null;
-    }
+    
 
     /**
      * 1. Kirim DM Facebook Messenger
@@ -216,5 +191,90 @@ class ComposioService
             'message'      => $message,
             'message_text' => $message,
         ]);
+    }
+
+
+    /**
+     * SINKRONISASI OTOMATIS: Tarik seluruh Fanspage Facebook & Update Channel di DB
+     */
+    public function syncFacebookPages(Office $office, ?Channel $channel = null): array
+    {
+        try {
+            // Eksekusi tool FACEBOOK_LIST_MANAGED_PAGES ke Composio
+            $res = $this->executeAction($office, 'FACEBOOK_LIST_MANAGED_PAGES');
+
+            if (!$res['success']) {
+                return [
+                    'success' => false,
+                    'error'   => $res['error'] ?? 'Gagal menarik daftar Fanspage dari Facebook.',
+                ];
+            }
+
+            // Ekstrak array pages dari berbagai kemungkinan nesting format Composio
+            $data = $res['data']['data'] ?? $res['data']['response_data'] ?? $res['data'] ?? [];
+            $pages = isset($data['data']) && is_array($data['data']) ? $data['data'] : (is_array($data) ? $data : []);
+
+            if (empty($pages)) {
+                return [
+                    'success' => false,
+                    'error'   => 'Tidak ada Fanspage Facebook yang ditemukan pada akun ini.',
+                ];
+            }
+
+            // Ambil data Halaman Facebook pertama yang dikelola
+            $firstPage = $pages[0] ?? [];
+            $pageId    = $firstPage['id'] ?? null;
+            $pageName  = $firstPage['name'] ?? null;
+
+            if (!$pageId) {
+                return [
+                    'success' => false,
+                    'error'   => 'Page ID tidak ditemukan di dalam respon Facebook.',
+                ];
+            }
+
+            // Cari atau update Channel Facebook kantor ini
+            $targetChannel = $channel ?: Channel::where('office_id', $office->id)->where('type', 'facebook')->first();
+
+            if ($targetChannel) {
+                $targetChannel->update([
+                    'identifier' => (string) $pageId,
+                    'name'       => $pageName ? "FB: {$pageName}" : $targetChannel->name,
+                    'status'     => 'connected',
+                ]);
+            }
+
+            Log::info("✅ [Auto-Sync FB Page Berhasil] Office: {$office->slug}, Page: {$pageName} ({$pageId})");
+
+            return [
+                'success'   => true,
+                'page_id'   => (string) $pageId,
+                'page_name' => $pageName,
+                'channel'   => $targetChannel,
+            ];
+        } catch (\Throwable $e) {
+            Log::error("Exception syncFacebookPages: " . $e->getMessage());
+            return [
+                'success' => false,
+                'error'   => $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Helper Cerdas: Dapatkan Facebook Page ID (Auto-Sync jika belum ada)
+     */
+    public function getFacebookPageId(Office $office): ?string
+    {
+        $channel = Channel::where('office_id', $office->id)->where('type', 'facebook')->first();
+
+        // 1. Jika sudah ada di database, langsung pakai
+        if ($channel && !empty($channel->identifier) && is_numeric($channel->identifier)) {
+            return $channel->identifier;
+        }
+
+        // 2. Jika belum ada, jalankan auto-sync ke Composio
+        $syncResult = $this->syncFacebookPages($office, $channel);
+        return $syncResult['success'] ? $syncResult['page_id'] : null;
     }
 }

@@ -128,42 +128,22 @@ Route::get('/test-instagram', function () {
 
 
 
-Route::get('/debug-composio', function (ComposioService $composio, GeminiAiService $gemini) {
-    $results = [];
+Route::get('/debug-composio', function (ComposioService $composio) {
     $office = Office::with('composioAccount')->first();
     $targetPsid = '28703283273815'; // ID Customer pengirim chat
 
-    // 1. Coba Tarik Page / Obrolan untuk Mendapatkan Page ID
-    $pageConvs = $composio->executeAction($office, 'FACEBOOK_GET_PAGE_CONVERSATIONS');
-    $results['page_conversations_response'] = $pageConvs;
+    // 1. Eksekusi Auto-Sync (Tarik Page ID & Nama Fanspage otomatis)
+    $syncResult = $composio->syncFacebookPages($office);
 
-    // 2. Ambil Channel Facebook Kantor
-    $channel = Channel::where('office_id', $office->id)->where('type', 'facebook')->first();
-
-    // Jika Page ID belum terisi, kita coba ambil ID atau izinkan input manual
-    $pageId = $channel?->identifier;
-
-    // 3. JIKA PAGE ID BELUM ADA, CEK DARI DATA CONVERSATION COMPOSIO
-    if (empty($pageId) && !empty($pageConvs['data']['data']['data'])) {
-        // Contoh jika page id ada di respons conversation
-        $firstItem = $pageConvs['data']['data']['data'][0] ?? [];
-        $pageId = $firstItem['page_id'] ?? null;
-        if ($pageId && $channel) {
-            $channel->update(['identifier' => $pageId]);
-        }
+    // 2. Jika Auto-Sync Berhasil, Langsung Tembak Pesan Balasan AI!
+    $sendResult = null;
+    if ($syncResult['success']) {
+        $aiMessage = "Halo Kak! Salam hangat dari Wasilah AI. Fanspage kami berhasil terhubung otomatis secara instan (" . now()->format('H:i:s') . "). Ada yang bisa kami bantu?";
+        $sendResult = $composio->sendFacebookMessenger($office, $targetPsid, $aiMessage);
     }
 
-    $results['page_id_used'] = $pageId;
-
-    // 4. JIKA PAGE ID SUDAH TERSEDIA, EKSEKUSI KIRIM BALASAN AI LANGSUNG KE MESSENGER!
-    if ($pageId) {
-        $aiMessage = "Halo Kak! Salam hangat dari Wasilah AI. Kami siap membantu pertanyaan Anda terkait layanan digital dan aplikasi.";
-        
-        $sendResponse = $composio->sendFacebookMessenger($office, $targetPsid, $aiMessage, $pageId);
-        $results['send_message_response'] = $sendResponse;
-    } else {
-        $results['send_message_response'] = 'Page ID belum terisi di Channel identifier. Silakan cek hasil JSON di atas untuk melihat Page ID Anda, atau masukkan Page ID di panel Channel Wasilah AI.';
-    }
-
-    return response()->json($results, 200, [], JSON_PRETTY_PRINT);
+    return response()->json([
+        '1_auto_sync_facebook_result' => $syncResult,
+        '2_live_messenger_send_result' => $sendResult,
+    ], 200, [], JSON_PRETTY_PRINT);
 });
