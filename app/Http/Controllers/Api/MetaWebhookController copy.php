@@ -7,10 +7,9 @@ use App\Models\Channel;
 use App\Models\Contact;
 use App\Models\Conversation;
 use App\Models\Message;
-use App\Services\ComposioService;
 use App\Services\GeminiAiService;
+use App\Services\MetaGraphService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -27,7 +26,7 @@ class MetaWebhookController extends Controller
         $token = $request->query('hub_verify_token');
         $challenge = $request->query('hub_challenge');
 
-        $verifyToken = config('services.meta.verify_token', 'wasilah_secret_meta_webhook_token');
+        $verifyToken = config('services.meta.verify_token');
 
         if ($mode === 'subscribe' && $token === $verifyToken) {
             return response($challenge, 200);
@@ -37,56 +36,48 @@ class MetaWebhookController extends Controller
     }
 
     /**
-     * 2. Penangkap Event DM & Komentar FB / IG (POST) ➡️ Dibalas oleh Composio
+     * 2. Penangkap Event DM & Komentar FB / IG (POST)
      */
-    public function handle(Request $request, ComposioService $composio, GeminiAiService $gemini)
+    public function handle(Request $request, MetaGraphService $meta, GeminiAiService $gemini)
     {
         $body = $request->all();
-        Log::info("=== [META INBOUND EVENT] ===");
-        Log::info(json_encode($body, JSON_PRETTY_PRINT));
+        // 🔍 REKAM SELURUH DATA MENTAH DARI META UNTUK DIAGNOSA
+        \Illuminate\Support\Facades\Log::info("=== [META RAW INBOUND DATA] ===");
+        \Illuminate\Support\Facades\Log::info(json_encode($body, JSON_PRETTY_PRINT));
+
 
         $object = $body['object'] ?? '';
 
+        // Tangani Event dari Facebook Page atau Instagram
         if ($object === 'page' || $object === 'instagram') {
             foreach ($body['entry'] as $entry) {
-                $pageId = (string) ($entry['id'] ?? '');
+                $pageId = $entry['id'] ?? '';
 
-                // Cari Channel Kantor di database (cocokkan Page ID atau tipe platform)
-                $channel = Channel::with('office.composioAccount')
-                    ->where('identifier', $pageId)
-                    ->orWhere(function ($q) use ($object) {
-                        $q->where('type', $object === 'instagram' ? 'instagram' : 'facebook');
-                    })
-                    ->first();
+                // Cari Channel Kantor di database berdasarkan Identifier Page ID
+                $channel = Channel::where('identifier', $pageId)->first();
+                if (!$channel) continue;
 
-                if (!$channel || !$channel->office) continue;
-
-                $office = $channel->office;
-                $officeId = $office->id;
-
-                // Pastikan identifier channel tersimpan dengan Page ID yang benar
-                if (empty($channel->identifier) || $channel->identifier !== $pageId) {
-                    $channel->update(['identifier' => $pageId]);
-                }
+                $credentials = $channel->credentials ?? [];
+                $accessToken = $credentials['access_token'] ?? '';
+                $officeId = $channel->office_id;
 
                 // =============================================================
                 // A. EVENT: PESAN DM (MESSENGER & INSTAGRAM DM)
                 // =============================================================
                 if (!empty($entry['messaging'])) {
                     foreach ($entry['messaging'] as $messaging) {
-                        $senderId = (string) ($messaging['sender']['id'] ?? '');
-                        $recipientId = (string) ($messaging['recipient']['id'] ?? '');
+                        $senderId = $messaging['sender']['id'] ?? '';
+                        $recipientId = $messaging['recipient']['id'] ?? '';
                         $text = $messaging['message']['text'] ?? '';
                         $messageId = $messaging['message']['mid'] ?? null;
                         $attachments = $messaging['message']['attachments'] ?? [];
 
-                        // Abaikan pesan echo / pesan dari fanspage itu sendiri
-                        if ($senderId === $pageId || ($messaging['message']['is_echo'] ?? false)) continue;
+                        if ($senderId === $pageId) continue;
 
                         $mediaUrl = null;
                         $messageType = 'text';
 
-                        // 🛡️ DOWNLOAD MEDIA LAMPIRAN JIKA ADA (FOTO / VIDEO / DOKUMEN)
+                        // 🛡️ DOWNLOAD BERSIH DARI CDN META KE STORAGE LOKAL
                         if (!empty($attachments)) {
                             $firstAttachment = $attachments[0];
                             $attachType = $firstAttachment['type'] ?? 'image';
@@ -94,12 +85,13 @@ class MetaWebhookController extends Controller
 
                             if ($metaCdnUrl) {
                                 try {
+                                    // Download bersih tanpa Bearer token (karena URL sudah pre-signed)
                                     $downloadRes = Http::withOptions([
                                         'allow_redirects' => true,
                                         'verify' => false,
                                         'timeout' => 30,
                                     ])->withHeaders([
-                                        'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                                        'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                                         'Accept' => '*/*',
                                     ])->get($metaCdnUrl);
 
@@ -110,58 +102,60 @@ class MetaWebhookController extends Controller
                                         Storage::disk('public')->put($filename, $downloadRes->body());
                                         $mediaUrl = Storage::url($filename);
                                         $messageType = $attachType === 'video' ? 'video' : ($attachType === 'file' ? 'document' : 'image');
+
+                                        Log::info("[Inbound Media Download Sukses] Tersimpan di: {$mediaUrl} (Ukuran: " . strlen($downloadRes->body()) . " bytes)");
+                                    } else {
+                                        Log::error("[Inbound Media Download Gagal] HTTP Status: " . $downloadRes->status());
                                     }
                                 } catch (\Exception $e) {
-                                    Log::error("[Meta Media Download Error] " . $e->getMessage());
+                                    Log::error("[Inbound Media Exception] " . $e->getMessage());
                                 }
                             }
                         }
 
+                        // Jika pesan hanya berupa foto tanpa teks, beri teks pembantu agar UI rapi
                         if (empty($text) && $mediaUrl) {
                             $text = $messageType === 'video' ? '🎥 [Video]' : ($messageType === 'document' ? '📄 [Dokumen]' : '🖼️ [Foto]');
                         }
 
                         if (empty($text) && empty($mediaUrl)) continue;
 
-                        // Anti-Duplicate Lock
-                        if ($messageId) {
-                            $lockKey = "meta_inbound_msg_{$messageId}";
-                            if (Cache::has($lockKey)) continue;
-                            Cache::put($lockKey, true, now()->addMinutes(10));
-                        }
-
                         $channelType = $object === 'instagram' ? 'ig_dm' : 'fb_dm';
 
-                        // 1. Simpan / Ambil Kontak Customer
+                        // 1. Cari / Buat Kontak Leads
                         $contact = Contact::firstOrCreate(
                             ['office_id' => $officeId, 'fb_user_id' => $senderId],
                             ['name' => ($object === 'instagram' ? 'IG User ' : 'FB User ') . substr($senderId, -4), 'pipeline_stage' => 'lead']
                         );
 
-                        // 2. Buat / Ambil Room Percakapan
+                        // 2. Room Percakapan
                         $conversation = Conversation::firstOrCreate(
                             ['office_id' => $officeId, 'channel_id' => $channel->id, 'contact_id' => $contact->id],
                             ['channel_type' => $channelType, 'is_bot_active' => $channel->is_bot_enabled]
                         );
 
-                        // 3. Simpan Pesan Masuk Customer ke CRM
+                        if ($messageId && Message::where('external_message_id', $messageId)->exists()) {
+                            continue;
+                        }
+
+                        // 3. Simpan Pesan Customer ke Database
                         Message::create([
-                            'conversation_id'     => $conversation->id,
-                            'office_id'           => $officeId,
-                            'sender_type'         => 'customer',
-                            'message_type'        => $messageType,
-                            'message_body'        => $text,
-                            'media_url'           => $mediaUrl,
+                            'conversation_id' => $conversation->id,
+                            'office_id' => $officeId,
+                            'sender_type' => 'customer',
+                            'message_type' => $messageType,
+                            'message_body' => $text,
+                            'media_url' => $mediaUrl,
                             'external_message_id' => $messageId,
-                            'is_read'             => false,
+                            'is_read' => false,
                         ]);
 
                         $conversation->update([
                             'last_message_at' => now(),
-                            'unread_count'    => $conversation->unread_count + 1
+                            'unread_count' => $conversation->unread_count + 1
                         ]);
 
-                        // 4. BALAS OTOMATIS OLEH AI GEMINI ➡️ DIKIRIMKAN VIA COMPOSIO
+                        // 4. Balas Otomatis Menggunakan AI Gemini jika Bot Aktif
                         if ($conversation->is_bot_active) {
                             $localImagePath = null;
                             if ($messageType === 'image' && $mediaUrl) {
@@ -172,24 +166,20 @@ class MetaWebhookController extends Controller
                             $botReply = $gemini->generateReply($conversation, $localImagePath);
 
                             if ($botReply) {
-                                // 🔥 EKSEKUSI PENGIRIMAN VIA COMPOSIO
-                                if ($object === 'instagram') {
-                                    $sendRes = $composio->sendInstagramDm($office, $senderId, $botReply);
-                                } else {
-                                    $sendRes = $composio->sendFacebookMessenger($office, $senderId, $botReply, $pageId);
-                                }
-
-                                Log::info("🚀 [Composio DM Send Response]:", $sendRes);
-
-                                // Simpan Pesan Balasan Bot ke CRM
                                 Message::create([
                                     'conversation_id' => $conversation->id,
-                                    'office_id'       => $officeId,
-                                    'sender_type'     => 'bot',
-                                    'message_type'    => 'text',
-                                    'message_body'    => $botReply,
-                                    'is_read'         => true,
+                                    'office_id' => $officeId,
+                                    'sender_type' => 'bot',
+                                    'message_type' => 'text',
+                                    'message_body' => $botReply,
+                                    'is_read' => true,
                                 ]);
+
+                                if ($object === 'instagram') {
+                                    $meta->sendInstagramDmReply($accessToken, $senderId, $botReply);
+                                } else {
+                                    $meta->sendFacebookMessengerReply($accessToken, $senderId, $botReply);
+                                }
 
                                 $gemini->analyzeAndSummarizeLead($conversation);
                             }
@@ -198,37 +188,84 @@ class MetaWebhookController extends Controller
                 }
 
                 // =============================================================
-                // B. EVENT: FEED POSTINGAN & BALAS KOMENTAR (FB & IG)
+                // B. EVENT: FEED POSTINGAN & BALAS KOMENTAR AI (FB & IG)
                 // =============================================================
                 if (!empty($entry['changes'])) {
                     foreach ($entry['changes'] as $change) {
                         $field = $change['field'] ?? '';
                         $val = $change['value'] ?? [];
 
+                        \Illuminate\Support\Facades\Log::info("--- [META COMMENT/FEED EVENT] ---");
+                        \Illuminate\Support\Facades\Log::info("Platform: {$object}, Field: {$field}");
+
                         // 🎯 1. FACEBOOK AUTO FIRST COMMENT
                         $postTypes = ['status', 'photo', 'video', 'post', 'share'];
                         if ($object === 'page' && $field === 'feed' && in_array($val['item'] ?? '', $postTypes) && ($val['verb'] ?? '') === 'add') {
                             $postId = $val['post_id'] ?? $val['id'] ?? null;
-                            $firstCommentText = $channel->credentials['auto_first_comment'] ?? null;
+                            $firstCommentText = $credentials['auto_first_comment'] ?? null;
 
-                            if ($postId && $firstCommentText) {
-                                Log::info("Posting Auto First Comment ke Post ID via Composio: {$postId}");
-                                $composio->replyFacebookComment($office, (string)$postId, $firstCommentText);
+                            if ($postId && $firstCommentText && !empty($accessToken)) {
+                                \Illuminate\Support\Facades\Log::info("Posting Auto First Comment ke Post ID: {$postId}");
+                                $meta->postFirstComment($accessToken, $postId, $firstCommentText);
                             }
                         }
 
                         // 🎯 2. FACEBOOK AI AUTO-REPLY KOMENTAR
+                        // if ($object === 'page' && $field === 'feed' && ($val['item'] ?? '') === 'comment' && ($val['verb'] ?? '') === 'add') {
+                        //     $commentId = $val['comment_id'] ?? '';
+                        //     $senderId = $val['from']['id'] ?? '';
+                        //     $senderName = $val['from']['name'] ?? 'Netizen';
+                        //     $commentText = $val['message'] ?? '';
+
+                        //     // Jangan balas jika komentar dibuat oleh Page sendiri
+                        //     if ($commentId && $senderId !== $pageId && !empty($commentText) && $channel->is_bot_enabled) {
+                        //         \Illuminate\Support\Facades\Log::info("FB Komentar Masuk dari {$senderName}: {$commentText}");
+
+                        //         $contact = Contact::firstOrCreate(
+                        //             ['office_id' => $officeId, 'fb_user_id' => $senderId],
+                        //             ['name' => $senderName, 'pipeline_stage' => 'lead']
+                        //         );
+
+                        //         $conversation = Conversation::firstOrCreate(
+                        //             ['office_id' => $officeId, 'channel_id' => $channel->id, 'contact_id' => $contact->id],
+                        //             ['channel_type' => 'fb_comment', 'is_bot_active' => true]
+                        //         );
+
+                        //         Message::create([
+                        //             'conversation_id' => $conversation->id,
+                        //             'office_id' => $officeId,
+                        //             'sender_type' => 'customer',
+                        //             'message_type' => 'text',
+                        //             'message_body' => $commentText,
+                        //             'external_message_id' => $commentId,
+                        //         ]);
+
+                        //         // AI Generate Jawaban
+                        //         $aiReply = $gemini->generateReply($conversation);
+                        //         if ($aiReply && !empty($accessToken)) {
+                        //             $res = $meta->replyToFacebookComment($accessToken, $commentId, $aiReply);
+                        //             \Illuminate\Support\Facades\Log::info("Respon AI Balas Komentar FB: " . json_encode($res));
+
+                        //             Message::create([
+                        //                 'conversation_id' => $conversation->id,
+                        //                 'office_id' => $officeId,
+                        //                 'sender_type' => 'bot',
+                        //                 'message_type' => 'text',
+                        //                 'message_body' => $aiReply,
+                        //             ]);
+                        //         }
+                        //     }
+                        // }
+
+
+                        // 🎯 2. FACEBOOK AI AUTO-REPLY KOMENTAR
                         if ($object === 'page' && $field === 'feed' && ($val['item'] ?? '') === 'comment' && ($val['verb'] ?? '') === 'add') {
-                            $commentId = (string) ($val['comment_id'] ?? '');
-                            $senderId = (string) ($val['from']['id'] ?? '');
+                            $commentId = $val['comment_id'] ?? '';
+                            $senderId = $val['from']['id'] ?? '';
                             $senderName = $val['from']['name'] ?? 'Netizen FB';
                             $commentText = $val['message'] ?? '';
 
                             if ($commentId && $senderId !== $pageId && !empty($commentText) && $channel->is_bot_enabled) {
-                                $lockKey = "fb_comment_lock_{$commentId}";
-                                if (Cache::has($lockKey)) continue;
-                                Cache::put($lockKey, true, now()->addMinutes(30));
-
                                 $contact = Contact::firstOrCreate(
                                     ['office_id' => $officeId, 'fb_user_id' => $senderId],
                                     ['name' => $senderName, 'pipeline_stage' => 'lead']
@@ -240,32 +277,31 @@ class MetaWebhookController extends Controller
                                 );
 
                                 Message::create([
-                                    'conversation_id'     => $conversation->id,
-                                    'office_id'           => $officeId,
-                                    'sender_type'         => 'customer',
-                                    'message_type'        => 'text',
-                                    'message_body'        => $commentText,
+                                    'conversation_id' => $conversation->id,
+                                    'office_id' => $officeId,
+                                    'sender_type' => 'customer',
+                                    'message_type' => 'text',
+                                    'message_body' => $commentText,
                                     'external_message_id' => $commentId,
-                                    'is_read'             => false,
+                                    'is_read' => false,
                                 ]);
 
+                                // 🔥 UPDATE WAKTU CHAT TERAKHIR AGAR MUNCUL DI ATAS
                                 $conversation->update([
                                     'last_message_at' => now(),
-                                    'unread_count'    => $conversation->unread_count + 1
+                                    'unread_count' => $conversation->unread_count + 1
                                 ]);
 
                                 $aiReply = $gemini->generateReply($conversation);
-                                if ($aiReply) {
-                                    // 🔥 Balas Komentar Facebook via Composio
-                                    $composio->replyFacebookComment($office, $commentId, $aiReply);
-
+                                if ($aiReply && !empty($accessToken)) {
+                                    $meta->replyToFacebookComment($accessToken, $commentId, $aiReply);
                                     Message::create([
                                         'conversation_id' => $conversation->id,
-                                        'office_id'       => $officeId,
-                                        'sender_type'     => 'bot',
-                                        'message_type'    => 'text',
-                                        'message_body'    => $aiReply,
-                                        'is_read'         => true,
+                                        'office_id' => $officeId,
+                                        'sender_type' => 'bot',
+                                        'message_type' => 'text',
+                                        'message_body' => $aiReply,
+                                        'is_read' => true,
                                     ]);
                                 }
                             }
@@ -273,16 +309,12 @@ class MetaWebhookController extends Controller
 
                         // 🎯 3. INSTAGRAM AI AUTO-REPLY KOMENTAR
                         if ($object === 'instagram' && $field === 'comments') {
-                            $commentId = (string) ($val['id'] ?? '');
-                            $senderId = (string) ($val['from']['id'] ?? '');
+                            $commentId = $val['id'] ?? '';
+                            $senderId = $val['from']['id'] ?? '';
                             $senderUsername = $val['from']['username'] ?? 'Netizen IG';
                             $commentText = $val['text'] ?? '';
 
                             if ($commentId && $senderId !== $pageId && !empty($commentText) && $channel->is_bot_enabled) {
-                                $lockKey = "ig_comment_lock_{$commentId}";
-                                if (Cache::has($lockKey)) continue;
-                                Cache::put($lockKey, true, now()->addMinutes(30));
-
                                 $contact = Contact::firstOrCreate(
                                     ['office_id' => $officeId, 'ig_username' => $senderUsername],
                                     ['name' => "@{$senderUsername}", 'pipeline_stage' => 'lead']
@@ -294,32 +326,31 @@ class MetaWebhookController extends Controller
                                 );
 
                                 Message::create([
-                                    'conversation_id'     => $conversation->id,
-                                    'office_id'           => $officeId,
-                                    'sender_type'         => 'customer',
-                                    'message_type'        => 'text',
-                                    'message_body'        => $commentText,
+                                    'conversation_id' => $conversation->id,
+                                    'office_id' => $officeId,
+                                    'sender_type' => 'customer',
+                                    'message_type' => 'text',
+                                    'message_body' => $commentText,
                                     'external_message_id' => $commentId,
-                                    'is_read'             => false,
+                                    'is_read' => false,
                                 ]);
 
+                                // 🔥 UPDATE WAKTU CHAT TERAKHIR AGAR MUNCUL DI PALING ATAS
                                 $conversation->update([
                                     'last_message_at' => now(),
-                                    'unread_count'    => $conversation->unread_count + 1
+                                    'unread_count' => $conversation->unread_count + 1
                                 ]);
 
                                 $aiReply = $gemini->generateReply($conversation);
-                                if ($aiReply) {
-                                    // 🔥 Balas Komentar Instagram via Composio
-                                    $composio->replyInstagramComment($office, $commentId, $aiReply);
-
+                                if ($aiReply && !empty($accessToken)) {
+                                    $meta->replyToInstagramComment($accessToken, $commentId, $aiReply);
                                     Message::create([
                                         'conversation_id' => $conversation->id,
-                                        'office_id'       => $officeId,
-                                        'sender_type'     => 'bot',
-                                        'message_type'    => 'text',
-                                        'message_body'    => $aiReply,
-                                        'is_read'         => true,
+                                        'office_id' => $officeId,
+                                        'sender_type' => 'bot',
+                                        'message_type' => 'text',
+                                        'message_body' => $aiReply,
+                                        'is_read' => true,
                                     ]);
                                 }
                             }
