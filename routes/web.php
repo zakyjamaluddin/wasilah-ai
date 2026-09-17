@@ -1,17 +1,18 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Livewire\Workspace\OmnichannelWorkspace;
 use App\Http\Controllers\Auth\FacebookOAuthController;
 use App\Http\Controllers\CheckoutController;
-use App\Models\Order;
-use App\Services\PaymentGatewayService;
+use App\Livewire\Workspace\OmnichannelWorkspace;
 use App\Models\Channel;
-use App\Models\Office;
 use App\Models\Contact;
 use App\Models\Conversation;
-use App\Services\GeminiAiService;
+use App\Models\Office;
+use App\Models\Order;
 use App\Services\ComposioService;
+use App\Services\GeminiAiService;
+use App\Services\PaymentGatewayService;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('landing');
@@ -128,29 +129,23 @@ Route::get('/test-instagram', function () {
 
 
 
-Route::get('/debug-composio', function (GeminiAiService $gemini, ComposioService $composio) {
-    $results = [];
-
+Route::get('/debug-composio', function (ComposioService $composio) {
     $office = Office::with('composioAccount')->first();
-    $targetPsid = '28703283273815'; // ID Facebook dari chat masuk
+    $apiKey = $office->composioAccount?->api_key;
+    $userId = "office_{$office->id}_{$office->slug}";
 
-    // 1. UPDATE KONTAK AGAR FB_USER_ID TERISI
-    $contact = Contact::where('office_id', $office->id)->latest('id')->first();
-    if ($contact && empty($contact->fb_user_id)) {
-        $contact->update(['fb_user_id' => $targetPsid]);
-    }
-    
-    $results['contact_fixed'] = [
-        'id' => $contact?->id,
-        'name' => $contact?->name,
-        'fb_user_id' => $contact?->fb_user_id,
-    ];
+    // 1. Tarik detail akun terhubung dari Composio REST API
+    $response = Http::withHeaders([
+        'x-api-key' => $apiKey,
+    ])->get("https://backend.composio.dev/api/v3.1/connected_accounts", [
+        'user_id' => $userId,
+    ]);
 
-    // 2. TES KIRIM PESAN REAL DARI COMPOSIO KE FACEBOOK PENGIRIM
-    $testMessage = "Halo Kak! Ini adalah balasan resmi otomatis dari Wasilah AI via Composio (" . now()->format('H:i:s') . ").";
-    
-    $sendResult = $composio->sendFacebookMessenger($office, $targetPsid, $testMessage);
-    $results['composio_send_response'] = $sendResult;
+    $connectedAccounts = $response->json();
 
-    return response()->json($results, 200, [], JSON_PRETTY_PRINT);
+    // 2. Coba juga tarik tools action yang tersedia
+    return response()->json([
+        'office_user_id' => $userId,
+        'connected_accounts_response' => $connectedAccounts,
+    ], 200, [], JSON_PRETTY_PRINT);
 });
