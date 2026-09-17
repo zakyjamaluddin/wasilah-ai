@@ -1,10 +1,11 @@
 <?php
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\WhatsAppWebhookController;
+use App\Http\Controllers\Api\ComposioWebhookController;
 use App\Http\Controllers\Api\MetaWebhookController;
 use App\Http\Controllers\Api\PaymentWebhookController;
+use App\Http\Controllers\Api\WhatsAppWebhookController;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 
 
 Route::get('/user', function (Request $request) {
@@ -22,3 +23,6 @@ Route::post('/meta/webhook', [MetaWebhookController::class, 'handle']);
 
 // Webhook Pembayaran Midtrans
 Route::post('/payment/webhook', [PaymentWebhookController::class, 'handle']);
+
+// Endpoint Webhook Penerima Event Composio (FB & Instagram)
+Route::post('/composio/webhook', [ComposioWebhookController::class, 'handle'])->name('api.composio.webhook');

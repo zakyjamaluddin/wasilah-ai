@@ -2,7 +2,8 @@
 <html lang="id" class="h-full">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- 🔥 VIEWPORT FIT COVER UNTUK ANDROID & IPHONE NOTCH -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Wasilah AI | OmniChat Live Workspace</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     

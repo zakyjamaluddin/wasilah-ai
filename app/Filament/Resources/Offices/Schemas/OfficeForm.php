@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\Offices\Schemas;
 
+use App\Models\ComposioAccount;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -51,6 +53,31 @@ class OfficeForm
                             ->placeholder('Jl. Asia Afrika No. 123, Bandung')
                             ->rows(3)
                             ->columnSpanFull(),
+                        
+                        // Tambahkan kode Select ini di dalam skema form OfficeResource:
+                        Select::make('composio_account_id')
+                            ->label('Akun Composio (FB & Instagram AI)')
+                            ->placeholder('-- Pilih Akun Composio untuk Kantor Ini --')
+                            ->relationship('composioAccount', 'name', function ($query) {
+                                $query->where('is_active', true);
+                            })
+                            ->getOptionLabelFromRecordUsing(function (ComposioAccount $account) {
+                                $terpakai = $account->offices()->count();
+                                return "{$account->name} (Terpakai: {$terpakai}/{$account->max_offices} Slot)";
+                            })
+                            ->disableOptionWhen(function (string $value, $record) {
+                                // Jika kantor ini sedang diedit dan akun ini memang miliknya, jangan di-disable
+                                if ($record && $record->composio_account_id == $value) {
+                                    return false;
+                                }
+                                // Jika slot sudah penuh (>= 4), opsi akan dinonaktifkan (abu-abu/tidak bisa dipilih)
+                                $account = ComposioAccount::find($value);
+                                return $account ? !$account->hasAvailableSlot() : true;
+                            })
+                            ->searchable()
+                            ->preload()
+                            ->helperText('1 Akun Composio maksimal menangani 4 kantor.')
+                            ->nullable(),
                     ])->columns(2),
             ])->columns(1);
     }

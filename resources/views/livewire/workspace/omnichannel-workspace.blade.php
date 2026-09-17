@@ -1,4 +1,5 @@
 <div wire:poll.2500ms class="flex h-screen w-screen flex-col overflow-hidden bg-white text-slate-800">
+{{-- <div wire:poll.2500ms class="flex workspace-height w-screen flex-col overflow-hidden bg-white text-slate-800"> --}}
 
     {{-- ========================================================================= --}}
     {{-- 1. TOP NAVBAR (GRADASI TOSCA-EMERALD DENGAN AKSEN GOLD)                   --}}
@@ -264,6 +265,8 @@
                 {{-- INPUT BAR BOTTOM DOCK --}}
                 <div class="flex-shrink-0 border-t border-slate-100 bg-white p-3">
                     <form wire:submit.prevent="sendReply" class="flex items-center space-x-2">
+                {{-- <div class="flex-shrink-0 border-t border-slate-100 bg-white p-2.5 sm:p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]">
+                    <form wire:submit.prevent="sendReply" class="flex items-center space-x-2"> --}}
 
                         {{-- Tombol Klip Lampiran (Mendukung Gambar, PDF, Word, Excel, Video MP4) --}}
                         <label class="cursor-pointer rounded-xl p-2.5 text-slate-400 transition hover:bg-teal-50 hover:text-teal-600 flex-shrink-0">

@@ -5,6 +5,7 @@ namespace App\Models;
 use Filament\Models\Contracts\HasName;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
@@ -66,5 +67,14 @@ class Office extends Model implements HasName
     public function broadcastCampaigns(): HasMany
     {
         return $this->hasMany(BroadcastCampaign::class);
+    }
+
+
+    /**
+     * Relasi: Setiap kantor terhubung ke 1 akun Composio.
+     */
+    public function composioAccount(): BelongsTo
+    {
+        return $this->belongsTo(ComposioAccount::class, 'composio_account_id');
     }
 }

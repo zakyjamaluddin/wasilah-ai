@@ -17,60 +17,72 @@ class ChannelForm
     {
         return $schema
             ->components([
-                TextInput::make('name')
-                    ->label('Nama Channel')
-                    ->placeholder('Contoh: WA CS Utama Jakarta')
-                    ->required(),
-                Select::make('type')
-                    ->label('Platform Channel')
-                    ->options([
-                        'whatsapp' => 'WhatsApp (Unofficial Baileys)',
-                        'facebook' => 'Facebook Page (Meta Graph)',
-                        'instagram' => 'Instagram Business (Meta Graph)',
-                    ])
-                    ->default('whatsapp')
-                    ->reactive()
-                    ->required(),
-
-                TextInput::make('identifier')
-                    ->label(fn (Get $get) => $get('type') === 'whatsapp' ? 'Session ID Baileys' : 'Page ID / Instagram Business ID')
-                    ->placeholder(fn (Get $get) => $get('type') === 'whatsapp' ? 'kantor_jakarta' : '102938475612345')
-                    ->required(),
-
-                // 🔥 KHUSUS FACEBOOK & INSTAGRAM
-                Section::make('Kredensial Meta Graph API')
-                    ->visible(fn (Get $get) => in_array($get('type'), ['facebook', 'instagram']))
+                Section::make('Informasi Saluran')
+                    ->description('Pilih platform dan beri nama saluran komunikasi kantor Anda.')
                     ->schema([
-                        Textarea::make('credentials.access_token')
-                            ->label('Page Access Token (Permanent)')
-                            ->placeholder('EAAxxxxxx...')
-                            ->rows(3)
-                            ->required(fn (Get $get) => in_array($get('type'), ['facebook', 'instagram'])),
+                        TextInput::make('name')
+                            ->label('Nama Channel')
+                            ->placeholder('Contoh: CS Utama Facebook Page / WA CS 1')
+                            ->required(),
+
+                        Select::make('type')
+                            ->label('Platform Channel')
+                            ->options([
+                                'whatsapp'  => 'WhatsApp (Unofficial Baileys)',
+                                'facebook'  => 'Facebook Page (Composio AI)',
+                                'instagram' => 'Instagram Business (Composio AI)',
+                            ])
+                            ->default('whatsapp')
+                            ->reactive()
+                            ->required(),
+
+                        // Session ID Baileys HANYA wajib diisi jika tipe WhatsApp
+                        TextInput::make('identifier')
+                            ->label('Session ID WhatsApp (VPS)')
+                            ->placeholder('Contoh: kantor_jakarta_wa')
+                            ->visible(fn (Get $get) => $get('type') === 'whatsapp')
+                            ->required(fn (Get $get) => $get('type') === 'whatsapp')
+                            ->helperText('ID unik sesi WhatsApp di VPS Baileys.'),
+
+                        // Prompt Tambahan Khusus Facebook First Comment (Opsional)
                         Textarea::make('credentials.auto_first_comment')
-                            ->label('Pesan Auto First Comment (Khusus FB Post)')
-                            ->placeholder('Contoh: Halo! Dapatkan diskon 50% khusus hari ini dengan klik link wa.me/628xxx')
+                            ->label('Instruksi / Pesan Auto First Comment (Khusus FB Post)')
+                            ->placeholder('Contoh: Halo Kak! Hubungi WhatsApp kami di wa.me/628xxx untuk info promo terbaru.')
                             ->rows(2)
                             ->visible(fn (Get $get) => $get('type') === 'facebook')
-                            ->helperText('Otomatis diposting sebagai komentar pertama setiap ada postingan baru di Fanspage.'),
+                            ->helperText('Pesan/komentar promosi otomatis yang akan diposting pertama kali saat ada postingan baru di Fanspage FB.'),
+                    ])->columns(2),
+
+                Section::make('🤖 Pengaturan Otomasi AI Chatbot')
+                    ->schema([
+                        Toggle::make('is_bot_enabled')
+                            ->label('Aktifkan AI Chatbot Otomatis')
+                            ->helperText('Jika aktif, Google Gemini AI akan otomatis menjawab pesan/komentar masuk.')
+                            ->default(true),
+
+                        Toggle::make('sync_groups')
+                            ->label('Tampilkan Obrolan Grup WhatsApp di OmniChat')
+                            ->helperText('Jika dinonaktifkan (default), OmniChat hanya menampilkan chat personal 1-on-1.')
+                            ->visible(fn (Get $get) => $get('type') === 'whatsapp')
+                            ->default(false),
                     ]),
-                Toggle::make('is_bot_enabled')
-                    ->label('Aktifkan AI Chatbot Otomatis')
-                    ->default(true),
 
                 Section::make('⏰ Jadwal Jam Aktif Bot (Opsional)')
-                    ->description('Atur kapan bot boleh membalas pesan secara otomatis.')
+                    ->description('Atur kapan AI bot diperbolehkan membalas pesan secara otomatis.')
                     ->schema([
                         Select::make('bot_schedule_type')
                             ->label('Mode Penjadwalan')
                             ->options([
-                                'always' => '24 Jam Nonstop (Selalu Aktif)',
-                                'outside_office_hours' => 'Hanya Aktif di Luar Jam Kerja (Malam & Libur)',
+                                'always'               => '24 Jam Nonstop (Selalu Aktif)',
+                                'outside_office_hours' => 'Hanya Aktif di Luar Jam Kerja CS (Malam & Libur)',
                             ])
                             ->default('always'),
+
                         TimePicker::make('office_start_time')
                             ->label('Jam Masuk CS (Siang)')
                             ->default('08:00')
                             ->seconds(false),
+
                         TimePicker::make('office_end_time')
                             ->label('Jam Pulang CS (Malam)')
                             ->default('17:00')

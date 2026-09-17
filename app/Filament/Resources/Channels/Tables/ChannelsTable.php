@@ -3,108 +3,148 @@
 namespace App\Filament\Resources\Channels\Tables;
 
 use App\Models\Channel;
-use App\Services\BaileysService;
-use App\Services\MetaGraphService;
+use App\Services\ComposioService;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
-use Illuminate\Support\HtmlString;
-
 
 class ChannelsTable
 {
     public static function configure(Table $table): Table
     {
+        $currentOffice = Filament::getTenant();
+
         return $table
             ->columns([
                 TextColumn::make('name')
                     ->label('Nama Channel')
                     ->searchable()
                     ->weight('bold'),
+
                 BadgeColumn::make('type')
                     ->label('Platform')
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'whatsapp'  => '💬 WhatsApp',
+                        'facebook'  => '📘 Facebook',
+                        'instagram' => '📷 Instagram',
+                        default     => ucfirst($state),
+                    })
                     ->colors([
                         'success' => 'whatsapp',
-                        'info' => 'facebook',
+                        'info'    => 'facebook',
                         'warning' => 'instagram',
                     ]),
+
                 TextColumn::make('identifier')
-                    ->label('Session ID'),
+                    ->label('ID / Session')
+                    ->placeholder('-'),
+
                 BadgeColumn::make('status')
                     ->label('Status Koneksi')
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'connected'    => '🟢 Terhubung',
+                        'disconnected' => '🔴 Terputus',
+                        'scanning'     => '🟡 Menunggu Scan',
+                        default        => ucfirst($state),
+                    })
                     ->colors([
                         'success' => 'connected',
-                        'danger' => 'disconnected',
+                        'danger'  => 'disconnected',
                         'warning' => 'scanning',
                     ]),
+
                 IconColumn::make('is_bot_enabled')
                     ->label('AI Bot')
                     ->boolean(),
             ])
-            ->filters([
-                //
-            ])
             ->recordActions([
-                EditAction::make(),
-            ])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
-            ])
-            ->actions([
-                // 🔥 ACTION SCAN QR CODE LANGSUNG DARI FILAMENT
-                // 🔥 ACTION SCAN QR REALTIME (LIVEWIRE)
+                // 🟢 1. WHATSAPP: MODAL SCAN QR REALTIME
                 Action::make('scanQr')
                     ->label('Scan QR')
                     ->icon('heroicon-o-qr-code')
                     ->color('success')
                     ->visible(fn (Channel $record) => $record->type === 'whatsapp')
-                    ->modalHeading(fn (Channel $record) => 'Scan QR - ' . $record->name)
+                    ->modalHeading(fn (Channel $record) => 'Scan QR WhatsApp - ' . $record->name)
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('Tutup')
                     ->modalContent(fn (Channel $record) => view('filament.qr-modal-wrapper', ['channelId' => $record->id])),
 
-                // ACTION TEST KONEKSI & RE-SUBSCRIBE (FB & IG)
-                Action::make('syncMeta')
-                    ->label('Cek Koneksi')
-                    ->icon('heroicon-o-arrow-path')
+                // 🔵 2. FACEBOOK: ROW ACTION HUBUNGKAN VIA COMPOSIO
+                Action::make('connect_facebook_row')
+                    ->label(fn (Channel $record) => $record->status === 'connected' ? 'Hubungkan Ulang' : 'Hubungkan Facebook')
+                    ->icon('heroicon-m-link')
                     ->color('info')
-                    ->visible(fn (Channel $record) => in_array($record->type, ['facebook', 'instagram']))
-                    ->action(function (Channel $record, MetaGraphService $meta) {
-                        $token = $record->credentials['access_token'] ?? null;
-                        if (!$token) {
-                            Notification::make()->title('Access Token belum diisi!')->danger()->send();
+                    ->visible(fn (Channel $record) => $record->type === 'facebook')
+                    ->action(function (Channel $record, ComposioService $composio) use ($currentOffice) {
+                        if (!$currentOffice->composio_account_id) {
+                            Notification::make()
+                                ->title('Akun Composio Belum Dipilih!')
+                                ->body('Silakan pilih Akun Composio pada pengaturan Kantor ini terlebih dahulu.')
+                                ->danger()
+                                ->send();
                             return;
                         }
 
-                        // 🔥 Teruskan $record->type (facebook / instagram)
-                        $res = $meta->subscribePageWebhook($record->identifier, $token, $record->type);
+                        $authUrl = $composio->initiateOAuth($currentOffice, 'facebook');
 
-                        if (!empty($res['success']) && $res['success'] === true) {
+                        if ($authUrl) {
+                            // Tandai status sementara bahwa channel sedang dalam proses otorisasi
                             $record->update(['status' => 'connected']);
+                            return redirect()->away($authUrl);
+                        }
+
+                        Notification::make()
+                            ->title('Gagal Memulai Sesi Composio')
+                            ->body('Periksa kembali API Key dan konfigurasi Composio Anda.')
+                            ->danger()
+                            ->send();
+                    }),
+
+                // 📷 3. INSTAGRAM: ROW ACTION HUBUNGKAN VIA COMPOSIO
+                Action::make('connect_instagram_row')
+                    ->label(fn (Channel $record) => $record->status === 'connected' ? 'Hubungkan Ulang' : 'Hubungkan Instagram')
+                    ->icon('heroicon-m-camera')
+                    ->color('warning')
+                    ->visible(fn (Channel $record) => $record->type === 'instagram')
+                    ->action(function (Channel $record, ComposioService $composio) use ($currentOffice) {
+                        if (!$currentOffice->composio_account_id) {
                             Notification::make()
-                                ->title("✅ Saluran {$record->name} Berhasil Terhubung & Webhook Aktif!")
-                                ->success()
-                                ->send();
-                        } else {
-                            $record->update(['status' => 'disconnected']);
-                            $errMsg = $res['error']['message'] ?? 'Gagal menghubungkan ke Meta';
-                            Notification::make()
-                                ->title('Gagal Terhubung: ' . $errMsg)
+                                ->title('Akun Composio Belum Dipilih!')
+                                ->body('Silakan pilih Akun Composio pada pengaturan Kantor ini terlebih dahulu.')
                                 ->danger()
                                 ->send();
+                            return;
                         }
+
+                        $authUrl = $composio->initiateOAuth($currentOffice, 'instagram');
+
+                        if ($authUrl) {
+                            $record->update(['status' => 'connected']);
+                            return redirect()->away($authUrl);
+                        }
+
+                        Notification::make()
+                            ->title('Gagal Memulai Sesi Composio')
+                            ->body('Periksa kembali API Key dan konfigurasi Composio Anda.')
+                            ->danger()
+                            ->send();
                     }),
+
                 EditAction::make(),
                 DeleteAction::make(),
+            ])
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
+                ]),
             ]);
     }
 }

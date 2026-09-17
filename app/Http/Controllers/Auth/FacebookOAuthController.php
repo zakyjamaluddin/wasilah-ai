@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\Channel;
 use App\Models\Office;
+use App\Services\ComposioService;
 use App\Services\MetaGraphService;
 use Filament\Notifications\Notification;
 use Illuminate\Http\Request;
@@ -17,36 +18,54 @@ class FacebookOAuthController extends Controller
     /**
      * 1. Arahkan User ke Popup Resmi Facebook Login
      */
-    public function redirect(Office $office)
+    // public function redirect(Office $office)
+    // {
+    //     $appId = config('services.meta.app_id') ?: env('META_APP_ID');
+    //     $redirectUri = url('/auth/facebook/callback');
+
+    //     // Simpan slug kantor di session agar saat redirect balik, sistem tahu kantor mana yang menghubungkan
+    //     session(['oauth_office_slug' => $office->slug]);
+
+    //     // Daftar Izin Lengkap untuk FB & IG
+    //     $permissions = [
+    //         'pages_show_list',
+    //         'pages_read_engagement',
+    //         'pages_manage_posts',
+    //         'pages_manage_comments',
+    //         'pages_messaging',
+    //         'pages_manage_metadata',
+    //         'instagram_basic',
+    //         'instagram_manage_comments',
+    //         'instagram_manage_messages',
+    //     ];
+
+    //     $loginUrl = "https://www.facebook.com/v19.0/dialog/oauth?" . http_build_query([
+    //         'client_id' => $appId,
+    //         'redirect_uri' => $redirectUri,
+    //         'scope' => implode(',', $permissions),
+    //         'response_type' => 'code',
+    //         'state' => Str::random(20),
+    //     ]);
+
+    //     return redirect()->away($loginUrl);
+    // }
+
+
+
+    public function redirect(Request $request, Office $office, ComposioService $composio)
     {
-        $appId = config('services.meta.app_id') ?: env('META_APP_ID');
-        $redirectUri = url('/auth/facebook/callback');
+        $platform = $request->query('platform', 'facebook'); // 'facebook' atau 'instagram'
 
-        // Simpan slug kantor di session agar saat redirect balik, sistem tahu kantor mana yang menghubungkan
-        session(['oauth_office_slug' => $office->slug]);
+        // 1. Dapatkan link login resmi dari Composio
+        $authUrl = $composio->initiateOAuth($office, $platform);
 
-        // Daftar Izin Lengkap untuk FB & IG
-        $permissions = [
-            'pages_show_list',
-            'pages_read_engagement',
-            'pages_manage_posts',
-            'pages_manage_comments',
-            'pages_messaging',
-            'pages_manage_metadata',
-            'instagram_basic',
-            'instagram_manage_comments',
-            'instagram_manage_messages',
-        ];
+        if (!$authUrl) {
+            return redirect("/admin/{$office->slug}/channels")
+                ->with('error', 'Gagal memulai sesi login Composio. Pastikan Kantor sudah memiliki Akun Composio aktif.');
+        }
 
-        $loginUrl = "https://www.facebook.com/v19.0/dialog/oauth?" . http_build_query([
-            'client_id' => $appId,
-            'redirect_uri' => $redirectUri,
-            'scope' => implode(',', $permissions),
-            'response_type' => 'code',
-            'state' => Str::random(20),
-        ]);
-
-        return redirect()->away($loginUrl);
+        // 2. Arahkan pengguna ke jendela persetujuan resmi Composio / Meta
+        return redirect()->away($authUrl);
     }
 
     /**

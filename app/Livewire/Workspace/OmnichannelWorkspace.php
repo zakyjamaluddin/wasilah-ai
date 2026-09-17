@@ -10,7 +10,9 @@ use App\Models\FollowUpSequence;
 use App\Models\Message;
 use App\Models\Office;
 use App\Services\BaileysService;
+use App\Services\ComposioService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -76,7 +78,6 @@ class OmnichannelWorkspace extends Component
         $contact = Contact::find($contactId);
         if (!$contact) return;
 
-        // Cari atau buat room percakapan
         $conversation = Conversation::firstOrCreate(
             [
                 'office_id' => $this->office->id,
@@ -131,7 +132,6 @@ class OmnichannelWorkspace extends Component
             );
         }
 
-        // Buat Room Obrolan
         $conversation = Conversation::firstOrCreate(
             [
                 'office_id' => $this->office->id,
@@ -163,16 +163,19 @@ class OmnichannelWorkspace extends Component
         return Conversation::query()
             ->where('office_id', $this->office->id)
             ->with(['contact', 'channel', 'latestMessage'])
-            // 🔥 5 TAB FILTER OMNICHANNEL CERDAS
+            ->where(function ($query) {
+                $query->whereHas('contact', fn ($cq) => $cq->where('wa_jid', 'not like', '%@g.us%'))
+                      ->orWhereHas('channel', fn ($chq) => $chq->where('sync_groups', true));
+            })
             ->when($this->tabFilter === 'whatsapp', function ($q) {
                 $q->where('channel_type', 'whatsapp')
                   ->whereHas('contact', fn ($cq) => $cq->where('wa_jid', 'not like', '%@g.us%'));
             })
             ->when($this->tabFilter === 'facebook', function ($q) {
-                $q->whereIn('channel_type', ['fb_dm', 'fb_comment']);
+                $q->whereIn('channel_type', ['facebook', 'fb_dm', 'fb_comment']);
             })
             ->when($this->tabFilter === 'instagram', function ($q) {
-                $q->whereIn('channel_type', ['ig_dm', 'ig_comment']);
+                $q->whereIn('channel_type', ['instagram', 'ig_dm', 'ig_comment']);
             })
             ->when($this->tabFilter === 'group', function ($q) {
                 $q->where('channel_type', 'whatsapp')
@@ -194,7 +197,7 @@ class OmnichannelWorkspace extends Component
     {
         $this->selectedConversationId = $id;
         if ($switchMobileView) {
-            $this->mobileView = 'chat'; // Di HP: Langsung buka ruang chat
+            $this->mobileView = 'chat';
         }
 
         $conv = Conversation::with('contact')->find($id);
@@ -207,7 +210,7 @@ class OmnichannelWorkspace extends Component
 
     public function backToMobileList()
     {
-        $this->mobileView = 'list'; // Di HP: Kembali ke daftar chat
+        $this->mobileView = 'list';
     }
 
     public function toggleBot()
@@ -236,7 +239,7 @@ class OmnichannelWorkspace extends Component
         }
     }
 
-    public function sendReply(BaileysService $baileys, \App\Services\MetaGraphService $meta)
+    public function sendReply(BaileysService $baileys, ComposioService $composio)
     {
         if ((empty(trim($this->replyText)) && !$this->attachment) || !$this->selectedConversationId) return;
 
@@ -287,13 +290,11 @@ class OmnichannelWorkspace extends Component
         $channel = $conv->channel;
         if (!$channel) return;
 
-        $accessToken = $channel->credentials['access_token'] ?? '';
-
         // =========================================================================
-        // 🎯 EKSEKUSI PENGIRIMAN BALASAN CS KE SALURAN MASING-MASING
+        // 🎯 EKSEKUSI PENGIRIMAN BALASAN CS (WHATSAPP BAILEYS & META COMPOSIO)
         // =========================================================================
 
-        // A. JIKA WHATSAPP
+        // A. JIKA WHATSAPP (Baileys Engine)
         if ($conv->channel_type === 'whatsapp') {
             try {
                 $targetJid = $conv->contact->wa_jid ?: $conv->contact->phone_number;
@@ -314,50 +315,51 @@ class OmnichannelWorkspace extends Component
                 if (!empty($response['data']['messageId'])) {
                     $msg->update(['external_message_id' => $response['data']['messageId']]);
                 }
-            } catch (\Exception $e) {}
-        }
-
-        // B. JIKA FACEBOOK MESSENGER DM
-        elseif ($conv->channel_type === 'fb_dm' && !empty($accessToken)) {
-            try {
-                $recipientPsid = $conv->contact->fb_user_id;
-                if ($recipientPsid) {
-                    // 🔥 Kirim Teks dan URL Media ke Messenger
-                    $meta->sendFacebookMessengerReply($accessToken, $recipientPsid, $textToSend, $mediaUrl, $messageType);
-                }
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error("[CS Reply FB DM Error] " . $e->getMessage());
+                Log::error("[CS Reply WA Error] " . $e->getMessage());
             }
         }
 
-        // C. JIKA INSTAGRAM DM
-        elseif ($conv->channel_type === 'ig_dm' && !empty($accessToken)) {
+        // B. JIKA FACEBOOK (Messenger DM / Komentar via Composio)
+        elseif (in_array($conv->channel_type, ['facebook', 'fb_dm', 'fb_comment'])) {
             try {
-                $recipientIgid = $conv->contact->fb_user_id;
-                if ($recipientIgid) {
-                    // 🔥 Kirim Teks dan URL Media ke Instagram DM
-                    $meta->sendInstagramDmReply($accessToken, $recipientIgid, $textToSend, $mediaUrl, $messageType);
+                $lastCustomerMsg = $conv->messages()->where('sender_type', 'customer')->latest('id')->first();
+                $isComment = $conv->channel_type === 'fb_comment' || str_starts_with($lastCustomerMsg?->message_body ?? '', '[Komentar');
+
+                if ($isComment && $lastCustomerMsg?->external_message_id) {
+                    // Balas Komentar Facebook
+                    $composio->replyFacebookComment($this->office, $lastCustomerMsg->external_message_id, $textToSend);
+                } else {
+                    // Kirim DM Facebook Messenger
+                    $recipientPsid = $conv->contact->fb_user_id ?: $conv->contact->identifier;
+                    if ($recipientPsid) {
+                        $composio->sendFacebookMessenger($this->office, $recipientPsid, $textToSend);
+                    }
                 }
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error("[CS Reply IG DM Error] " . $e->getMessage());
+                Log::error("[CS Reply FB Composio Error] " . $e->getMessage());
             }
         }
 
-        // D. JIKA KOMENTAR POSTINGAN FB / IG
-        elseif ($conv->channel_type === 'fb_comment' && !empty($accessToken)) {
+        // C. JIKA INSTAGRAM (Direct Message / Komentar via Composio)
+        elseif (in_array($conv->channel_type, ['instagram', 'ig_dm', 'ig_comment'])) {
             try {
                 $lastCustomerMsg = $conv->messages()->where('sender_type', 'customer')->latest('id')->first();
-                if ($lastCustomerMsg && $lastCustomerMsg->external_message_id) {
-                    $meta->replyToFacebookComment($accessToken, $lastCustomerMsg->external_message_id, $textToSend);
+                $isComment = $conv->channel_type === 'ig_comment' || str_starts_with($lastCustomerMsg?->message_body ?? '', '[Komentar');
+
+                if ($isComment && $lastCustomerMsg?->external_message_id) {
+                    // Balas Komentar Instagram
+                    $composio->replyInstagramComment($this->office, $lastCustomerMsg->external_message_id, $textToSend);
+                } else {
+                    // Kirim DM Instagram
+                    $recipientId = $conv->contact->ig_username ?: $conv->contact->fb_user_id ?: $conv->contact->identifier;
+                    if ($recipientId) {
+                        $composio->sendInstagramDm($this->office, $recipientId, $textToSend);
+                    }
                 }
-            } catch (\Exception $e) {}
-        } elseif ($conv->channel_type === 'ig_comment' && !empty($accessToken)) {
-            try {
-                $lastCustomerMsg = $conv->messages()->where('sender_type', 'customer')->latest('id')->first();
-                if ($lastCustomerMsg && $lastCustomerMsg->external_message_id) {
-                    $meta->replyToInstagramComment($accessToken, $lastCustomerMsg->external_message_id, $textToSend);
-                }
-            } catch (\Exception $e) {}
+            } catch (\Exception $e) {
+                Log::error("[CS Reply IG Composio Error] " . $e->getMessage());
+            }
         }
     }
 
@@ -375,10 +377,9 @@ class OmnichannelWorkspace extends Component
     public function getActiveConversationProperty()
     {
         if (!$this->selectedConversationId) return null;
-         return Conversation::with([
+        return Conversation::with([
             'contact',
             'channel',
-            // 🔥 Ambil kolom penting saja & urutkan berdasarkan ID (Auto-Index Primary Key)
             'messages' => fn ($q) => $q->select('id', 'conversation_id', 'sender_type', 'message_type', 'message_body', 'media_url', 'created_at')
                                        ->orderBy('id', 'asc')
         ])->find($this->selectedConversationId);
