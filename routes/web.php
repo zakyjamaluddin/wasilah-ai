@@ -122,7 +122,6 @@ Route::get('/test-instagram', function () {
 
 
 use App\Models\Office;
-use App\Models\Channel;
 use App\Services\ComposioService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
@@ -145,7 +144,7 @@ Route::get('/debug-composio', function (ComposioService $composio) {
     $enableResult = null;
     if (request()->has('enable_trigger')) {
         $triggerSlug = request()->query('enable_trigger', 'facebook_message_received');
-        
+
         $enableRes = Http::withHeaders([
             'x-api-key' => $apiKey,
             'Content-Type' => 'application/json',
@@ -153,7 +152,7 @@ Route::get('/debug-composio', function (ComposioService $composio) {
             'user_id'      => $userId,
             'trigger_slug' => $triggerSlug,
         ]);
-        
+
         $enableResult = $enableRes->json();
     }
 
