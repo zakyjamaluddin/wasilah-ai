@@ -17,8 +17,8 @@ Route::post('/whatsapp/webhook', [WhatsAppWebhookController::class, 'handle']);
 
 
 // Webhook Meta (Facebook & Instagram)
-// Route::get('/meta/webhook', [MetaWebhookController::class, 'verify']);
-// Route::post('/meta/webhook', [MetaWebhookController::class, 'handle']);
+Route::get('/meta/webhook', [MetaWebhookController::class, 'verify']);
+Route::post('/meta/webhook', [MetaWebhookController::class, 'handle']);
 
 
 // Webhook Pembayaran Midtrans
