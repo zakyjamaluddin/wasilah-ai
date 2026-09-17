@@ -126,44 +126,44 @@ use App\Services\ComposioService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
 
+
 Route::get('/debug-composio', function () {
     $office = Office::with('composioAccount')->first();
     $apiKey = $office->composioAccount?->api_key;
     $userId = "office_{$office->id}_{$office->slug}";
-    $connectedAccountId = "ca_5EcQoe_tKKo4"; // ID Akun Facebook yang aktif tadi
+    $connectedAccountId = "ca_5EcQoe_tKKo4"; // Sesuai sesi Anda
 
     $client = Http::withHeaders([
         'x-api-key' => $apiKey,
         'Content-Type' => 'application/json',
     ]);
 
-    // 1. LIHAT DAFTAR TRIGGER RESMI FACEBOOK DI COMPOSIO
-    $availableTriggersRes = $client->get("https://backend.composio.dev/api/v3.1/triggers", [
-        'toolkit_slug' => 'facebook',
-    ]);
-    $availableTriggers = $availableTriggersRes->json('items') ?? $availableTriggersRes->json('data') ?? $availableTriggersRes->json() ?? [];
-
-    // 2. JIKA DIKLIK ?enable=1, KITA AKTIFKAN SEMUA TRIGGER FACEBOOK TERSEBUT
     $enableResults = [];
-    if (request()->has('enable')) {
-        foreach ($availableTriggers as $t) {
-            $triggerSlug = $t['slug'] ?? $t['name'] ?? null;
-            if (!$triggerSlug) continue;
 
+    // JIKA DIKLIK ?enable=1, KITA TEMBAK LANGSUNG PEMBUATAN TRIGGERNYA
+    if (request()->has('enable')) {
+        // Slug umum untuk event Facebook di Composio
+        $targetSlugs = [
+            'facebook_new_message',
+            'facebook_new_comment'
+        ];
+
+        foreach ($targetSlugs as $slug) {
+            // Memanggil API Create/Enable Trigger dengan spesifik User ID & Account ID
             $res = $client->post("https://backend.composio.dev/api/v3.1/triggers/enable", [
-                'user_id'              => $userId,
-                'trigger_slug'         => $triggerSlug,
+                'user_id' => $userId,
+                'trigger_slug' => $slug,
                 'connected_account_id' => $connectedAccountId,
             ]);
 
-            $enableResults[$triggerSlug] = [
+            $enableResults[$slug] = [
                 'status' => $res->status(),
                 'response' => $res->json(),
             ];
         }
     }
 
-    // 3. CEK TRIGGER YANG SEDANG AKTIF SAAT INI
+    // CEK TRIGGER YANG SEDANG AKTIF SAAT INI
     $activeRes = $client->get("https://backend.composio.dev/api/v3.1/triggers/active", [
         'user_id' => $userId,
     ]);
@@ -171,11 +171,9 @@ Route::get('/debug-composio', function () {
     return response()->json([
         'office_user_id' => $userId,
         'connected_account_id' => $connectedAccountId,
-        'total_available_triggers' => count($availableTriggers),
-        'available_triggers' => $availableTriggers,
-        'current_active_triggers' => $activeRes->json(),
         'enable_action_results' => $enableResults,
-        'tombol_aktifkan' => 'Buka https://wasilah-ai.my.id/debug-composio?enable=1 untuk mengaktifkan pendengar webhook di Composio!',
+        'current_active_triggers' => $activeRes->json(),
+        'panduan_tindakan' => 'Buka https://wasilah-ai.my.id/debug-composio?enable=1 untuk mengaktifkan trigger secara spesifik.'
     ], 200, [], JSON_PRETTY_PRINT);
 });
 
