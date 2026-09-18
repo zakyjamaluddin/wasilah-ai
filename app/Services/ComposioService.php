@@ -255,8 +255,8 @@ class ComposioService
      */
     public function replyInstagramComment(Office $office, string $commentId, string $message): array
     {
-        return $this->executeAction($office, 'INSTAGRAM_CREATE_MEDIA_COMMENT_REPLY', [
-            'comment_id'   => (string) $commentId,
+        return $this->executeAction($office, 'INSTAGRAM_POST_IG_COMMENT_REPLIES', [
+            'ig_comment_id'   => (string) $commentId,
             'message'      => $message,
             'message_text' => $message,
         ]);
