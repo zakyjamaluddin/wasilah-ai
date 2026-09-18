@@ -122,25 +122,21 @@ Route::get('/test-instagram', function () {
 
 use App\Models\Office;
 use App\Services\ComposioService;
-use Illuminate\Support\Facades\Http;
 
 Route::get('/debug-composio', function (ComposioService $composio) {
     $office = Office::with('composioAccount')->first();
-    $apiKey = $office->composioAccount?->api_key;
-    $convId = "aWdfZAG06MzQwMjgyMzY2ODQxNzEwMzAxMjQ0MjYwMjg0NjI3MjAzMzk1MTU2";
+    $realRecipientId = "17841424802774623"; // IGSID Asli Kenbi Farm
 
-    // 1. LIHAT SKEMA INPUT RESMI DARI TOOL INSTAGRAM_SEND_TEXT_MESSAGE
-    $toolDetailsRes = Http::withHeaders([
-        'x-api-key' => $apiKey,
-    ])->get("https://backend.composio.dev/api/v3.1/tools/INSTAGRAM_SEND_TEXT_MESSAGE");
+    $testReply = "Waalaikumsalam Mas Zaky! 🎉 Ini balasan otomatis Instagram resmi dari Wasilah AI via Composio (" . now()->format('H:i:s') . ").";
 
-    // 2. LIHAT DETAIL PESAN & PARTICIPANT DI DALAM CONVERSATION TERSEBUT
-    $messagesRes = $composio->executeAction($office, 'INSTAGRAM_LIST_ALL_MESSAGES', [
-        'conversation_id' => $convId,
+    // Eksekusi tool INSTAGRAM_SEND_TEXT_MESSAGE
+    $sendResult = $composio->executeAction($office, 'INSTAGRAM_SEND_TEXT_MESSAGE', [
+        'recipient_id' => $realRecipientId,
+        'text'         => $testReply,
     ]);
 
     return response()->json([
-        'tool_schema' => $toolDetailsRes->json(),
-        'messages_in_conversation' => $messagesRes,
+        'target_recipient_id' => $realRecipientId,
+        'send_result'         => $sendResult,
     ], 200, [], JSON_PRETTY_PRINT);
 });
