@@ -211,7 +211,14 @@ class MetaWebhookController extends Controller
 
                             if ($botReply) {
                                 if ($object === 'instagram') {
+                                    // Coba kirim ke Real PSID atau fallback ke Sender ID Webhook
                                     $sendRes = $composio->sendInstagramDm($office, $realPsid, $botReply, $replyMid);
+
+                                    // Jika gagal dengan subcode 2534014, fallback coba ke senderId asli webhook (1551001142903584)
+                                    if (!($sendRes['success'] ?? false) && $senderId !== $realPsid) {
+                                        Log::info("🔄 [IG Fallback Retry] Mencoba kirim ke Webhook Sender ID: {$senderId}");
+                                        $sendRes = $composio->sendInstagramDm($office, $senderId, $botReply, $replyMid);
+                                    }
                                 } else {
                                     $sendRes = $composio->sendFacebookMessenger($office, $senderId, $botReply, $pageId);
                                 }
