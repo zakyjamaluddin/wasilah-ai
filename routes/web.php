@@ -136,7 +136,7 @@ Route::get('/debug-composio', function (ComposioService $composio) {
 
     if (!empty($firstConv['participants']['data'])) {
         foreach ($firstConv['participants']['data'] as $p) {
-            if ($p['id'] !== '17841469669611882') {
+            if ($p['id'] !== '1551001142903584') {
                 $targetRecipientId = $p['id'];
                 break;
             }
