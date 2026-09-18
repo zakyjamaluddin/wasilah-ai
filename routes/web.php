@@ -123,57 +123,41 @@ Route::get('/test-instagram', function () {
 
 use App\Models\Office;
 use App\Services\ComposioService;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Cache;
 
-
-Route::get('/debug-composio', function () {
+Route::get('/debug-composio', function (ComposioService $composio) {
     $office = Office::with('composioAccount')->first();
-    $apiKey = $office->composioAccount?->api_key;
-    $userId = "office_{$office->id}_{$office->slug}";
-    $connectedAccountId = "ca_5EcQoe_tKKo4"; // Sesuai sesi Anda
 
-    $client = Http::withHeaders([
-        'x-api-key' => $apiKey,
-        'Content-Type' => 'application/json',
-    ]);
+    // 1. Tarik Percakapan Asli di Akun Instagram yang Terhubung
+    $convsResult = $composio->executeAction($office, 'INSTAGRAM_LIST_ALL_CONVERSATIONS');
 
-    $enableResults = [];
+    // 2. Ambil ID Pesan / Recipient dari Percakapan Terbaru
+    $items = $convsResult['data']['data']['data'] ?? $convsResult['data']['data'] ?? [];
+    $firstConv = $items[0] ?? null;
+    $targetRecipientId = '1551001142903584'; // ID dari chat Anda tadi
 
-    // JIKA DIKLIK ?enable=1, KITA TEMBAK LANGSUNG PEMBUATAN TRIGGERNYA
-    if (request()->has('enable')) {
-        // Slug umum untuk event Facebook di Composio
-        $targetSlugs = [
-            'facebook_new_message',
-            'facebook_new_comment'
-        ];
-
-        foreach ($targetSlugs as $slug) {
-            // Memanggil API Create/Enable Trigger dengan spesifik User ID & Account ID
-            $res = $client->post("https://backend.composio.dev/api/v3.1/triggers/enable", [
-                'user_id' => $userId,
-                'trigger_slug' => $slug,
-                'connected_account_id' => $connectedAccountId,
-            ]);
-
-            $enableResults[$slug] = [
-                'status' => $res->status(),
-                'response' => $res->json(),
-            ];
+    if (!empty($firstConv['participants']['data'])) {
+        foreach ($firstConv['participants']['data'] as $p) {
+            if ($p['id'] !== '17841469669611882') {
+                $targetRecipientId = $p['id'];
+                break;
+            }
         }
     }
 
-    // CEK TRIGGER YANG SEDANG AKTIF SAAT INI
-    $activeRes = $client->get("https://backend.composio.dev/api/v3.1/triggers/active", [
-        'user_id' => $userId,
+    // 3. Coba Eksekusi INSTAGRAM_SEND_TEXT_MESSAGE dengan Berbagai Kombinasi Parameter
+    $testMessage = "Waalaikumsalam Kak! Salam dari Wasilah AI (" . now()->format('H:i:s') . ").";
+
+    // Coba kirim via Composio
+    $sendResult = $composio->executeAction($office, 'INSTAGRAM_SEND_TEXT_MESSAGE', [
+        'recipient_id'   => (string) $targetRecipientId,
+        'recipient_psid' => (string) $targetRecipientId,
+        'text'           => $testMessage,
+        'message_text'   => $testMessage,
     ]);
 
     return response()->json([
-        'office_user_id' => $userId,
-        'connected_account_id' => $connectedAccountId,
-        'enable_action_results' => $enableResults,
-        'current_active_triggers' => $activeRes->json(),
-        'panduan_tindakan' => 'Buka https://wasilah-ai.my.id/debug-composio?enable=1 untuk mengaktifkan trigger secara spesifik.'
+        'detected_target_recipient_id' => $targetRecipientId,
+        'instagram_conversations_response' => $convsResult,
+        'instagram_send_test_result' => $sendResult,
     ], 200, [], JSON_PRETTY_PRINT);
 });
-
