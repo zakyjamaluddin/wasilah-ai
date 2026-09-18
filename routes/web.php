@@ -132,11 +132,11 @@ Route::get('/debug-composio', function (ComposioService $composio) {
     // 2. Ambil ID Pesan / Recipient dari Percakapan Terbaru
     $items = $convsResult['data']['data']['data'] ?? $convsResult['data']['data'] ?? [];
     $firstConv = $items[0] ?? null;
-    $targetRecipientId = '1551001142903584'; // ID dari chat Anda tadi
+    $targetRecipientId = '17841469669611882'; // ID dari chat Anda tadi
 
     if (!empty($firstConv['participants']['data'])) {
         foreach ($firstConv['participants']['data'] as $p) {
-            if ($p['id'] !== '1551001142903584') {
+            if ($p['id'] !== '17841469669611882') {
                 $targetRecipientId = $p['id'];
                 break;
             }
