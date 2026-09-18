@@ -125,7 +125,7 @@ use App\Services\ComposioService;
 
 Route::get('/debug-composio', function (ComposioService $composio) {
     $office = Office::with('composioAccount')->first();
-    $realRecipientId = "1551001142903584"; // IGSID Asli Kenbi Farm
+    $realRecipientId = "aWdfZAG06MzQwMjgyMzY2ODQxNzEwMzAxMjQ0MjYwMjg0NjI3MjAzMzk1MTU2"; // IGSID Asli Kenbi Farm
     $convsResult = $composio->executeAction($office, 'INSTAGRAM_LIST_ALL_CONVERSATIONS');
 
     $testReply = "Waalaikumsalam Mas Zaky! 🎉 Ini balasan otomatis Instagram resmi dari Wasilah AI via Composio (" . now()->format('H:i:s') . ").";
