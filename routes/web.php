@@ -120,44 +120,27 @@ Route::get('/test-instagram', function () {
     ]);
 });
 
-
 use App\Models\Office;
 use App\Services\ComposioService;
+use Illuminate\Support\Facades\Http;
 
 Route::get('/debug-composio', function (ComposioService $composio) {
     $office = Office::with('composioAccount')->first();
+    $apiKey = $office->composioAccount?->api_key;
+    $convId = "aWdfZAG06MzQwMjgyMzY2ODQxNzEwMzAxMjQ0MjYwMjg0NjI3MjAzMzk1MTU2";
 
-    // 1. Tarik Percakapan Asli di Akun Instagram yang Terhubung
-    $convsResult = $composio->executeAction($office, 'INSTAGRAM_LIST_ALL_CONVERSATIONS');
+    // 1. LIHAT SKEMA INPUT RESMI DARI TOOL INSTAGRAM_SEND_TEXT_MESSAGE
+    $toolDetailsRes = Http::withHeaders([
+        'x-api-key' => $apiKey,
+    ])->get("https://backend.composio.dev/api/v3.1/tools/INSTAGRAM_SEND_TEXT_MESSAGE");
 
-    // 2. Ambil ID Pesan / Recipient dari Percakapan Terbaru
-    $items = $convsResult['data']['data']['data'] ?? $convsResult['data']['data'] ?? [];
-    $firstConv = $items[0] ?? null;
-    $targetRecipientId = '1551001142903584'; // ID dari chat Anda tadi
-
-    if (!empty($firstConv['participants']['data'])) {
-        foreach ($firstConv['participants']['data'] as $p) {
-            if ($p['id'] !== '17841469669611882') {
-                $targetRecipientId = $p['id'];
-                break;
-            }
-        }
-    }
-
-    // 3. Coba Eksekusi INSTAGRAM_SEND_TEXT_MESSAGE dengan Berbagai Kombinasi Parameter
-    $testMessage = "Waalaikumsalam Kak! Salam dari Wasilah AI (" . now()->format('H:i:s') . ").";
-
-    // Coba kirim via Composio
-    $sendResult = $composio->executeAction($office, 'INSTAGRAM_SEND_TEXT_MESSAGE', [
-        'recipient_id'   => (string) $targetRecipientId,
-        'recipient_psid' => (string) $targetRecipientId,
-        'text'           => $testMessage,
-        'message_text'   => $testMessage,
+    // 2. LIHAT DETAIL PESAN & PARTICIPANT DI DALAM CONVERSATION TERSEBUT
+    $messagesRes = $composio->executeAction($office, 'INSTAGRAM_LIST_ALL_MESSAGES', [
+        'conversation_id' => $convId,
     ]);
 
     return response()->json([
-        'detected_target_recipient_id' => $targetRecipientId,
-        'instagram_conversations_response' => $convsResult,
-        'instagram_send_test_result' => $sendResult,
+        'tool_schema' => $toolDetailsRes->json(),
+        'messages_in_conversation' => $messagesRes,
     ], 200, [], JSON_PRETTY_PRINT);
 });
