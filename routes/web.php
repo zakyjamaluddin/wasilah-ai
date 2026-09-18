@@ -154,6 +154,8 @@ Route::get('/debug-composio', function (ComposioService $composio) {
     ]);
 
     return response()->json([
+        'first_conversation' => $firstConv,
+        'items_in_conversation' => $items,
         'conversations_result' => $convsResult,
         'real_recipient_id' => $realRecipientId,
         'target_recipient_id' => $targetRecipientId,
