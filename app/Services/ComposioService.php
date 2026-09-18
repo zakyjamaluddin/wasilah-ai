@@ -242,18 +242,12 @@ class ComposioService
     /**
      * 3. Kirim DM Instagram (Direct Message)
      */
-    public function sendInstagramDm(Office $office, string $recipientId, string $message, ?string $replyToMid = null): array
+    public function sendInstagramDm(Office $office, string $recipientId, string $message): array
     {
-        $params = [
+        return $this->executeAction($office, 'INSTAGRAM_SEND_TEXT_MESSAGE', [
             'recipient_id' => (string) $recipientId,
             'text'         => $message,
-        ];
-
-        if ($replyToMid) {
-            $params['reply_to_message_id'] = $replyToMid;
-        }
-
-        return $this->executeAction($office, 'INSTAGRAM_SEND_TEXT_MESSAGE', $params);
+        ]);
     }
 
     /**
