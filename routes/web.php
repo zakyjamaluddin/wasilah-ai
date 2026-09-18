@@ -125,8 +125,25 @@ use App\Services\ComposioService;
 
 Route::get('/debug-composio', function (ComposioService $composio) {
     $office = Office::with('composioAccount')->first();
-    $realRecipientId = "aWdfZAG06MzQwMjgyMzY2ODQxNzEwMzAxMjQ0MjYwMjg0NjI3MjAzMzk1MTU2"; // IGSID Asli Kenbi Farm
+    $realRecipientId = "1551001142903584"; // IGSID Asli Kenbi Farm
+    // 1. Tarik Percakapan Asli di Akun Instagram yang Terhubung
     $convsResult = $composio->executeAction($office, 'INSTAGRAM_LIST_ALL_CONVERSATIONS');
+
+    // 2. Ambil ID Pesan / Recipient dari Percakapan Terbaru
+    $items = $convsResult['data']['data']['data'] ?? $convsResult['data']['data'] ?? [];
+    $firstConv = $items[0] ?? null;
+    $targetRecipientId = '1551001142903584'; // ID dari chat Anda tadi
+
+    if (!empty($firstConv['participants']['data'])) {
+        foreach ($firstConv['participants']['data'] as $p) {
+            if ($p['id'] !== '17841469669611882') {
+                $targetRecipientId = $p['id'];
+                break;
+            }
+        }
+    };
+
+
 
     $testReply = "Waalaikumsalam Mas Zaky! 🎉 Ini balasan otomatis Instagram resmi dari Wasilah AI via Composio (" . now()->format('H:i:s') . ").";
 
@@ -138,7 +155,8 @@ Route::get('/debug-composio', function (ComposioService $composio) {
 
     return response()->json([
         'conversations_result' => $convsResult,
-        'target_recipient_id' => $realRecipientId,
+        'real_recipient_id' => $realRecipientId,
+        'target_recipient_id' => $targetRecipientId,
         'send_result'         => $sendResult,
     ], 200, [], JSON_PRETTY_PRINT);
 });
