@@ -149,7 +149,7 @@ Route::get('/debug-composio', function (ComposioService $composio) {
 
     // Eksekusi tool INSTAGRAM_SEND_TEXT_MESSAGE
     $sendResult = $composio->executeAction($office, 'INSTAGRAM_SEND_TEXT_MESSAGE', [
-        'recipient_id' => '17841463561112451',
+        'recipient_id' => '1744463296786445',
         'text'         => $testReply,
     ]);
 
