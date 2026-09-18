@@ -134,7 +134,7 @@ class ComposioService
         }
     }
 
-    
+
 
     /**
      * 1. Kirim DM Facebook Messenger
@@ -174,7 +174,7 @@ class ComposioService
      */
     public function sendInstagramDm(Office $office, string $recipientId, string $message): array
     {
-        return $this->executeAction($office, 'INSTAGRAM_SEND_DIRECT_MESSAGE', [
+        return $this->executeAction($office, 'INSTAGRAM_SEND_TEXT_MESSAGE', [
             'recipient_id' => (string) $recipientId,
             'message_text' => $message,
             'message'      => $message,
