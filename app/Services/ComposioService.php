@@ -172,13 +172,88 @@ class ComposioService
     /**
      * 3. Kirim DM Instagram
      */
-    public function sendInstagramDm(Office $office, string $recipientId, string $message): array
+   /**
+     * Cari PSID Asli Pengirim Instagram dari Obrolan Terakhir
+     */
+    /**
+     * Cari PSID Asli Pengirim Instagram dari Obrolan Terakhir
+     */
+    public function getLatestInstagramSender(Office $office): ?array
     {
-        return $this->executeAction($office, 'INSTAGRAM_SEND_TEXT_MESSAGE', [
+        try {
+            // 1. Ambil daftar percakapan
+            $convs = $this->executeAction($office, 'INSTAGRAM_LIST_ALL_CONVERSATIONS');
+            $convItems = $convs['data']['data']['data'] ?? $convs['data']['data'] ?? [];
+
+            if (empty($convItems)) return null;
+
+            $latestConvId = $convItems[0]['id'] ?? null;
+            if (!$latestConvId) return null;
+
+            // 2. Ambil butir pesan terakhir dari percakapan tersebut
+            $messagesRes = $this->executeAction($office, 'INSTAGRAM_LIST_ALL_MESSAGES', [
+                'conversation_id' => $latestConvId,
+            ]);
+
+            $messages = $messagesRes['data']['data']['data'] ?? $messagesRes['data']['data'] ?? [];
+            if (empty($messages)) return null;
+
+            $latestMsg = $messages[0] ?? [];
+
+            // Pengirim (Customer)
+            $senderPsid = $latestMsg['from']['id'] ?? null;
+            $senderUsername = $latestMsg['from']['username'] ?? 'User';
+
+            // Penerima (Akun IG Bisnis Saya)
+            $myIgData = $latestMsg['to']['data'][0] ?? [];
+            $myIgUsername = $myIgData['username'] ?? 'Akun Saya';
+            $myIgId = $myIgData['id'] ?? '-';
+
+            $messageMid = $latestMsg['id'] ?? null;
+            $messageText = $latestMsg['message'] ?? '';
+
+            if ($senderPsid) {
+                // 🔥 LOG TRANSPARAN & LENGKAP
+                Log::info("==================================================");
+                Log::info("🎯 [IG REAL PSID & ACCOUNT DETECTED]");
+                Log::info("🏢 Akun IG Saya (Toko) : @{$myIgUsername} (ID: {$myIgId})");
+                Log::info("👤 Pengirim (Sender)   : @{$senderUsername} (PSID: {$senderPsid})");
+                Log::info("✉️ Pesan Terakhir      : \"{$messageText}\"");
+                Log::info("🔑 Message ID (MID)    : {$messageMid}");
+                Log::info("==================================================");
+
+                return [
+                    'psid'            => (string) $senderPsid,
+                    'sender_username' => $senderUsername,
+                    'my_ig_username'  => $myIgUsername,
+                    'my_ig_id'        => $myIgId,
+                    'mid'             => $messageMid,
+                    'text'            => $messageText,
+                ];
+            }
+
+            return null;
+        } catch (\Throwable $e) {
+            Log::error("Exception getLatestInstagramSender: " . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * 3. Kirim DM Instagram (Direct Message)
+     */
+    public function sendInstagramDm(Office $office, string $recipientId, string $message, ?string $replyToMid = null): array
+    {
+        $params = [
             'recipient_id' => (string) $recipientId,
-            'text' => $message,
-            'message'      => $message,
-        ]);
+            'text'         => $message,
+        ];
+
+        if ($replyToMid) {
+            $params['reply_to_message_id'] = $replyToMid;
+        }
+
+        return $this->executeAction($office, 'INSTAGRAM_SEND_TEXT_MESSAGE', $params);
     }
 
     /**

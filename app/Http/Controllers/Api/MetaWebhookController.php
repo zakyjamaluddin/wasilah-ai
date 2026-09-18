@@ -148,12 +148,32 @@ class MetaWebhookController extends Controller
                             Cache::put($lockKey, true, now()->addMinutes(10));
                         }
 
+                        // =============================================================
+                        // 🔥 KHUSUS INSTAGRAM: DETEKSI REAL PSID & LOG TRANSPARAN
+                        // =============================================================
+                        $realPsid = $senderId;
+                        $replyMid = $messageId;
+                        $contactName = ($object === 'instagram' ? 'IG User ' : 'FB User ') . substr($senderId, -4);
+
+                        if ($object === 'instagram') {
+                            $igSenderData = $composio->getLatestInstagramSender($office);
+                            if ($igSenderData && !empty($igSenderData['psid'])) {
+                                $realPsid = $igSenderData['psid'];
+                                $replyMid = $igSenderData['mid'] ?? $messageId;
+                                $contactName = '@' . ($igSenderData['sender_username'] ?? substr($realPsid, -4));
+                            }
+                        }
+
                         $channelType = $object === 'instagram' ? 'ig_dm' : 'fb_dm';
 
                         // 1. Kontak
                         $contact = Contact::firstOrCreate(
-                            ['office_id' => $officeId, 'fb_user_id' => $senderId],
-                            ['name' => ($object === 'instagram' ? 'IG User ' : 'FB User ') . substr($senderId, -4), 'pipeline_stage' => 'lead']
+                            ['office_id' => $officeId, 'fb_user_id' => $realPsid],
+                            [
+                                'name' => $contactName,
+                                'ig_username' => $object === 'instagram' ? str_replace('@', '', $contactName) : null,
+                                'pipeline_stage' => 'lead'
+                            ]
                         );
 
                         // 2. Percakapan
@@ -191,7 +211,7 @@ class MetaWebhookController extends Controller
 
                             if ($botReply) {
                                 if ($object === 'instagram') {
-                                    $sendRes = $composio->sendInstagramDm($office, $senderId, $botReply);
+                                    $sendRes = $composio->sendInstagramDm($office, $realPsid, $botReply, $replyMid);
                                 } else {
                                     $sendRes = $composio->sendFacebookMessenger($office, $senderId, $botReply, $pageId);
                                 }
@@ -258,7 +278,7 @@ class MetaWebhookController extends Controller
                                     'conversation_id'     => $conversation->id,
                                     'office_id'           => $officeId,
                                     'sender_type'         => 'customer',
-                                    'message_type'        => 'text',
+                                    'message_type'        => $messageType ?? 'text',
                                     'message_body'        => $commentText,
                                     'external_message_id' => $commentId,
                                     'is_read'             => false,
