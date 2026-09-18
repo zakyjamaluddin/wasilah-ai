@@ -176,7 +176,7 @@ class ComposioService
     {
         return $this->executeAction($office, 'INSTAGRAM_SEND_TEXT_MESSAGE', [
             'recipient_id' => (string) $recipientId,
-            'message_text' => $message,
+            'text' => $message,
             'message'      => $message,
         ]);
     }
