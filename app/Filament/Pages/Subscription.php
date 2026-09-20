@@ -3,12 +3,14 @@
 namespace App\Filament\Pages;
 
 use App\Models\Office;
+use App\Models\SubscriptionOrder;
 use BackedEnum;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use UnitEnum;
 
 class Subscription extends Page
@@ -117,8 +119,8 @@ class Subscription extends Page
         ]);
 
         // 2. Ambil Link Lynk.id dari config/.env
-        $paymentUrl = $this->selectedPlan === '1_year' 
-            ? config('services.lynkid.url_1_year') 
+        $paymentUrl = $this->selectedPlan === '1_year'
+            ? config('services.lynkid.url_1_year')
             : config('services.lynkid.url_1_month');
 
         $this->showCheckoutModal = false;
