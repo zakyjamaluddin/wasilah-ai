@@ -18,38 +18,32 @@ class OfficesTable
                 TextColumn::make('name')
                     ->label('Nama Kantor / Cabang')
                     ->searchable()
-                    ->weight('bold')
-                    ->icon('heroicon-o-building-office'),
+                    ->weight('bold'),
 
-                TextColumn::make('slug')
-                    ->label('Slug URL')
+                // Tambahkan di dalam table() OfficeResource:
+                TextColumn::make('effective_subscription_status')
+                    ->label('Status Langganan')
                     ->badge()
-                    ->color('gray'),
+                    ->color(fn (string $state): string => match ($state) {
+                        'active'   => 'success',
+                        'expiring' => 'warning',
+                        'inactive' => 'danger',
+                        'free'     => 'gray',
+                        default    => 'gray',
+                    })
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'active'   => '🟢 Aktif',
+                        'expiring' => '🟡 Hampir Habis',
+                        'inactive' => '🔴 Kedaluwarsa',
+                        'free'     => '⚪ Free',
+                        default    => ucfirst($state),
+                    }),
 
-                // Metrik Jumlah Pengguna di Cabang Ini
-                TextColumn::make('users_count')
-                    ->label('Total Staff')
-                    ->counts('users')
-                    ->badge()
-                    ->color('info'),
-
-                // Metrik Jumlah Channel Terhubung
-                TextColumn::make('channels_count')
-                    ->label('Channel Aktif')
-                    ->counts('channels')
-                    ->badge()
-                    ->color('success'),
-
-                // Metrik Total Leads
-                TextColumn::make('contacts_count')
-                    ->label('Total Leads')
-                    ->counts('contacts')
-                    ->badge()
-                    ->color('warning'),
-
-                IconColumn::make('is_active')
-                    ->label('Aktif')
-                    ->boolean(),
+                TextColumn::make('expired_at')
+                    ->label('Berakhir')
+                    ->dateTime('d M Y')
+                    ->placeholder('Belum diatur')
+                    ->sortable(),
 
                 TextColumn::make('created_at')
                     ->label('Terdaftar')

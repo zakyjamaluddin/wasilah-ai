@@ -15,5 +15,9 @@
     },
     "optionalDependencies": {
         "@laravel/multiplex": "^0.4.1"
+    },
+    "dependencies": {
+        "@composio/core": "^0.17.0",
+        "composio-core": "^0.5.39"
     }
 }

@@ -56,4 +56,10 @@ return [
             : 'https://sandbox.duitku.com/webapi/api/merchant/v2/inquiry',
     ],
 
+    // Tambahkan di dalam array return config/services.php:
+    'lynkid' => [
+        'url_1_month' => env('LYNKID_URL_1_MONTH', 'https://lynk.id'),
+        'url_1_year'  => env('LYNKID_URL_1_YEAR', 'https://lynk.id'),
+    ],
+
 ];

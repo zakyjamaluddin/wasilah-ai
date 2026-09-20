@@ -24,14 +24,8 @@ class KnowledgeBasesTable
                 TextColumn::make('title')
                     ->label('Judul Pengetahuan')
                     ->searchable()
-                    ->weight('bold'),
-                BadgeColumn::make('type')
-                    ->label('Tipe')
-                    ->colors([
-                        'primary' => 'text_doc',
-                        'warning' => 'faq',
-                        'success' => 'dynamic_url',
-                    ]),
+                    ->weight('bold')
+                    ->description(fn (KnowledgeBase $record): string => $record->type ?: '-'),
                 BadgeColumn::make('platform')
                     ->label('Platform'),
                 IconColumn::make('is_active')

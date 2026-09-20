@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ContactGroups;
 
+use App\Filament\Resources\BaseResource;
 use App\Filament\Resources\ContactGroups\Pages\CreateContactGroup;
 use App\Filament\Resources\ContactGroups\Pages\EditContactGroup;
 use App\Filament\Resources\ContactGroups\Pages\ListContactGroups;
@@ -14,6 +15,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use UnitEnum;
+
 class ContactGroupResource extends Resource
 {
     protected static ?string $model = ContactGroup::class;

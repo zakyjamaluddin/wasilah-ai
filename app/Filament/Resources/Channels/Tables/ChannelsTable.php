@@ -27,36 +27,21 @@ class ChannelsTable
                 TextColumn::make('name')
                     ->label('Nama Channel')
                     ->searchable()
-                    ->weight('bold'),
+                    ->weight('bold')
+                    ->description(fn (Channel $record): string => $record->type ?: '-'),
 
-                BadgeColumn::make('type')
-                    ->label('Platform')
-                    ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'whatsapp'  => '💬 WhatsApp',
-                        'facebook'  => '📘 Facebook',
-                        'instagram' => '📷 Instagram',
-                        default     => ucfirst($state),
-                    })
-                    ->colors([
-                        'success' => 'whatsapp',
-                        'info'    => 'facebook',
-                        'warning' => 'instagram',
-                    ]),
 
-                TextColumn::make('identifier')
-                    ->label('ID / Session')
-                    ->placeholder('-'),
 
                 BadgeColumn::make('status')
                     ->label('Status Koneksi')
                     ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'connected'    => '🟢 Terhubung',
+                        'connected'    => '🔵 Terhubung',
                         'disconnected' => '🔴 Terputus',
-                        'scanning'     => '🟡 Menunggu Scan',
+                        'scanning'     => '📲 Menunggu Scan...',
                         default        => ucfirst($state),
                     })
                     ->colors([
-                        'success' => 'connected',
+                        'info' => 'connected',
                         'danger'  => 'disconnected',
                         'warning' => 'scanning',
                     ]),

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Channels;
 
+use App\Filament\Resources\BaseResource;
 use App\Filament\Resources\Channels\Pages\CreateChannel;
 use App\Filament\Resources\Channels\Pages\EditChannel;
 use App\Filament\Resources\Channels\Pages\ListChannels;
@@ -21,11 +22,14 @@ class ChannelResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedSignal;
     protected static string | UnitEnum | null $navigationGroup = 'Setting & Integration';
+    
 
     public static function form(Schema $schema): Schema
     {
         return ChannelForm::configure($schema);
     }
+
+
 
     public static function table(Table $table): Table
     {

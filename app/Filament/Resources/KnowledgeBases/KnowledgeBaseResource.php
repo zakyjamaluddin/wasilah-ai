@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\KnowledgeBases;
 
+use App\Filament\Resources\BaseResource;
 use App\Filament\Resources\KnowledgeBases\Pages\CreateKnowledgeBase;
 use App\Filament\Resources\KnowledgeBases\Pages\EditKnowledgeBase;
 use App\Filament\Resources\KnowledgeBases\Pages\ListKnowledgeBases;

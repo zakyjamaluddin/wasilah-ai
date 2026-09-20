@@ -21,14 +21,8 @@ class UsersTable
                 TextColumn::make('name')
                     ->label('Nama Pengguna')
                     ->searchable()
-                    ->weight('bold'),
-
-                TextColumn::make('email')
-                    ->label('Email')
-                    ->searchable()
-                    ->icon('heroicon-o-envelope'),
-
-                // Kolom Role Pengguna
+                    ->weight('bold')
+                    ->description(fn (User $record): string => $record->email),
 
 
                 // 🔥 KOLOM ROLE PRESISI LANGSUNG DARI DATABASE
@@ -52,7 +46,8 @@ class UsersTable
 
                 // Kolom Cabang yang Diberi Akses
                 TagsColumn::make('offices.name')
-                    ->label('Akses Kantor Cabang'),
+                    ->label('Akses Kantor Cabang')
+                    ->wrap(),
 
                 TextColumn::make('created_at')
                     ->label('Dibuat')

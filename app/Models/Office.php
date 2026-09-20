@@ -27,6 +27,11 @@ class Office extends Model implements HasName
         });
     }
 
+     protected $casts = [
+        'is_active'   => 'boolean',
+        'expired_at'  => 'datetime',
+    ];
+
     // Nama kantor yang ditampilkan di UI Filament
     public function getFilamentName(): string
     {
@@ -77,4 +82,72 @@ class Office extends Model implements HasName
     {
         return $this->belongsTo(ComposioAccount::class, 'composio_account_id');
     }
+
+
+
+    /**
+     * Ambil status langganan dinamis (otomatis mendeteksi H-7 & expired).
+     */
+    public function getEffectiveSubscriptionStatusAttribute(): string
+    {
+        // 1. Jika memang diatur 'free', tetap 'free'
+        if ($this->subscription_status === 'free' || empty($this->expired_at)) {
+            return 'free';
+        }
+
+        // 2. Jika tanggal sudah lewat dari hari ini -> 'inactive'
+        if ($this->expired_at->isPast()) {
+            return 'inactive';
+        }
+
+        // 3. Jika tersisa <= 7 hari sebelum expired -> 'expiring'
+        if ((now()->diffInDays($this->expired_at, false) + 1) <= 7) {
+            return 'expiring';
+        }
+
+        // 4. Masih aktif normal
+        return 'active';
+    }
+
+    /**
+     * Cek apakah tenant memiliki hak akses aktif (bisa active atau expiring).
+     */
+    public function hasActiveSubscription(): bool
+    {
+        $status = $this->effective_subscription_status;
+        return in_array($status, ['active', 'expiring']);
+    }
+
+    /**
+     * Cek apakah masa aktif dalam masa tenggang peringatan (H-7).
+     */
+    public function isExpiringSoon(): bool
+    {
+        return $this->effective_subscription_status === 'expiring';
+    }
+
+    /**
+     * Cek apakah masa aktif sudah habis / belum bayar.
+     */
+    public function isInactive(): bool
+    {
+        return in_array($this->effective_subscription_status, ['free', 'inactive']);
+    }
+
+    /**
+     * Hitung sisa hari masa aktif langganan.
+     */
+    public function getDaysRemainingAttribute(): ?int
+    {
+        if (!$this->expired_at) {
+            return null;
+        }
+
+        if ($this->expired_at->isPast()) {
+            return 0;
+        }
+
+        return (int) now()->diffInDays($this->expired_at, false) + 1;
+    }
+
 }

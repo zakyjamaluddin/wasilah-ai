@@ -22,11 +22,9 @@ class ContactsTable
                 TextColumn::make('name')
                     ->label('Nama Leads')
                     ->searchable()
-                    ->weight('bold'),
-                TextColumn::make('phone_number')
-                    ->label('Nomor Telepon')
-                    ->searchable()
-                    ->default(fn (Contact $record) => $record->wa_jid ?: '-'),
+                    ->weight('bold')
+                    ->description(fn (Contact $record): string => $record->phone_number ?: '-'),
+                
                 BadgeColumn::make('pipeline_stage')
                     ->label('Status Pipeline')
                     ->colors([

@@ -53,7 +53,7 @@
                         wire:click="$set('tabFilter', 'all')"
                         class="flex items-center justify-center py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer {{ $tabFilter === 'all' ? 'bg-white text-teal-800 font-extrabold shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-white/50' }}"
                     >
-                        <span>Semua</span>
+                        <span>🌟 Semua</span>
                     </button>
 
                     {{-- 2. WhatsApp --}}
@@ -61,7 +61,7 @@
                         wire:click="$set('tabFilter', 'whatsapp')"
                         class="flex items-center justify-center py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer {{ $tabFilter === 'whatsapp' ? 'bg-emerald-600 text-white font-extrabold shadow-sm' : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50' }}"
                     >
-                        <span>WA</span>
+                        <span>💬 WA</span>
                     </button>
 
                     {{-- 3. Facebook --}}
@@ -69,7 +69,7 @@
                         wire:click="$set('tabFilter', 'facebook')"
                         class="flex items-center justify-center py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer {{ $tabFilter === 'facebook' ? 'bg-blue-600 text-white font-extrabold shadow-sm' : 'text-slate-600 hover:text-blue-700 hover:bg-blue-50' }}"
                     >
-                        <span>FB</span>
+                        <span>📘 FB</span>
                     </button>
 
                     {{-- 4. Instagram --}}
@@ -77,7 +77,7 @@
                         wire:click="$set('tabFilter', 'instagram')"
                         class="flex items-center justify-center py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer {{ $tabFilter === 'instagram' ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white font-extrabold shadow-sm' : 'text-slate-600 hover:text-pink-700 hover:bg-pink-50' }}"
                     >
-                        <span>IG</span>
+                        <span>📷 IG</span>
                     </button>
 
                     {{-- 5. Grup WA --}}
@@ -85,7 +85,7 @@
                         wire:click="$set('tabFilter', 'group')"
                         class="flex items-center justify-center py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer {{ $tabFilter === 'group' ? 'bg-teal-700 text-white font-extrabold shadow-sm' : 'text-slate-600 hover:text-teal-800 hover:bg-teal-50' }}"
                     >
-                        <span>Group</span>
+                        <span>👥 Grup</span>
                     </button>
                 </div>
             </div>
@@ -303,7 +303,7 @@
                     <button
                         type="button"
                         @click="showMobileSummary = true"
-                        class="flex items-center gap-2 px-4 py-2.5 rounded-full bg-slate-900 text-white text-xs font-bold shadow-xl border border-slate-700/80 hover:bg-slate-800 active:scale-95 transition-all cursor-pointer">
+                        class="flex items-center gap-2 px-3.5 py-2.5 rounded-full bg-slate-900 text-white text-xs font-bold shadow-xl border border-slate-700/80 hover:bg-slate-800 active:scale-95 transition-all cursor-pointer">
                         <x-heroicon-s-sparkles class="w-4 h-4 text-amber-400" />
                         <span>Summary Leads</span>
                     </button>
@@ -473,7 +473,7 @@
                     </button>
                 </div>
 
-                {{-- Isi Konten Drawer (Lengkap: Profil + Pipeline + AI Summary + Follow-Up Drip) --}}
+                {{-- Isi Konten Drawer (Sama dengan Kolom 3) --}}
                 <div class="flex-1 overflow-y-auto p-4 space-y-4">
                     @if ($active)
                         @php
@@ -520,53 +520,6 @@
                             <button wire:click="saveAiSummary" class="w-full rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 py-2 text-xs font-bold text-white shadow-sm hover:shadow-amber-500/20 transition cursor-pointer">
                                 Simpan Catatan
                             </button>
-                        </div>
-
-                        {{-- 🔥 WIDGET FOLLOW-UP DRIP SEQUENCE UNTUK TAMPILAN HP --}}
-                        @php
-                            $activeEnrollmentMobile = \App\Models\FollowUpEnrollment::where('contact_id', $contact->id)
-                                ->whereIn('status', ['active', 'paused'])
-                                ->with('sequence.steps')
-                                ->first();
-                        @endphp
-
-                        <div class="rounded-2xl border border-slate-200 bg-white p-3.5 space-y-2.5 shadow-xs">
-                            <h4 class="flex items-center justify-between text-xs font-extrabold text-slate-800">
-                                <span>🎯 Follow-Up Drip</span>
-                                @if ($activeEnrollmentMobile)
-                                    <span class="rounded-full px-2 py-0.5 text-[9px] font-bold {{ $activeEnrollmentMobile->status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700' }}">
-                                        {{ strtoupper($activeEnrollmentMobile->status) }}
-                                    </span>
-                                @endif
-                            </h4>
-
-                            @if ($activeEnrollmentMobile)
-                                <div class="rounded-xl bg-slate-50 p-2.5 border border-slate-200 space-y-1 text-xs">
-                                    <p class="font-bold text-slate-900 truncate">{{ $activeEnrollmentMobile->sequence->name }}</p>
-                                    <p class="text-slate-500">
-                                        Langkah <b>{{ $activeEnrollmentMobile->current_step_order }}</b> dari {{ $activeEnrollmentMobile->sequence->steps->count() }}
-                                    </p>
-                                    <p class="text-slate-400 text-[11px]">
-                                        Jadwal: {{ $activeEnrollmentMobile->next_scheduled_at ? $activeEnrollmentMobile->next_scheduled_at->format('d M, H:i') : '-' }}
-                                    </p>
-                                    <div class="flex space-x-1.5 pt-1.5">
-                                        @if ($activeEnrollmentMobile->status === 'active')
-                                            <button wire:click="pauseSequence({{ $activeEnrollmentMobile->id }})" class="flex-1 py-1.5 rounded-lg bg-amber-500 text-white font-bold text-xs cursor-pointer">Jeda</button>
-                                        @else
-                                            <button wire:click="resumeSequence({{ $activeEnrollmentMobile->id }})" class="flex-1 py-1.5 rounded-lg bg-emerald-600 text-white font-bold text-xs cursor-pointer">Lanjutkan</button>
-                                        @endif
-                                    </div>
-                                </div>
-                            @else
-                                <div class="space-y-1.5">
-                                    <select wire:change="enrollToSequence($event.target.value)" class="w-full rounded-xl border border-slate-200 p-2.5 text-xs bg-slate-50 text-slate-700 font-medium">
-                                        <option value="">+ Daftarkan ke Sequence...</option>
-                                        @foreach (\App\Models\FollowUpSequence::where('office_id', $office->id)->where('is_active', true)->get() as $s)
-                                            <option value="{{ $s->id }}">{{ $s->name }} ({{ $s->steps()->count() }} Langkah)</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                            @endif
                         </div>
                     @endif
                 </div>
@@ -640,4 +593,3 @@
     @endif
 
 </div>
-

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\BroadcastTemplates;
 
+use App\Filament\Resources\BaseResource;
 use App\Filament\Resources\BroadcastTemplates\Pages\CreateBroadcastTemplate;
 use App\Filament\Resources\BroadcastTemplates\Pages\EditBroadcastTemplate;
 use App\Filament\Resources\BroadcastTemplates\Pages\ListBroadcastTemplates;
@@ -14,6 +15,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use UnitEnum;
+
 class BroadcastTemplateResource extends Resource
 {
     protected static ?string $model = BroadcastTemplate::class;

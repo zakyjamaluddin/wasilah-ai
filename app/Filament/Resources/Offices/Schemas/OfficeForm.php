@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Offices\Schemas;
 
 use App\Models\ComposioAccount;
+use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -53,7 +54,7 @@ class OfficeForm
                             ->placeholder('Jl. Asia Afrika No. 123, Bandung')
                             ->rows(3)
                             ->columnSpanFull(),
-                        
+
                         // Tambahkan kode Select ini di dalam skema form OfficeResource:
                         Select::make('composio_account_id')
                             ->label('Akun Composio (FB & Instagram AI)')
@@ -78,6 +79,28 @@ class OfficeForm
                             ->preload()
                             ->helperText('1 Akun Composio maksimal menangani 4 kantor.')
                             ->nullable(),
+
+                        // Tambahkan Section Subscription ini di dalam schema form OfficeResource:
+                        Section::make('💳 Status Langganan Kantor (Subscription)')
+                            ->description('Kelola masa aktif dan status paket kantor cabang ini.')
+                            ->schema([
+                                Select::make('subscription_status')
+                                    ->label('Status Langganan')
+                                    ->options([
+                                        'free'     => 'Free (Belum Bayar)',
+                                        'active'   => 'Active (Langganan Aktif)',
+                                        'expiring' => 'Expiring (Hampir Habis H-7)',
+                                        'inactive' => 'Inactive (Kedaluwarsa)',
+                                    ])
+                                    ->default('free')
+                                    ->required(),
+
+                                DateTimePicker::make('expired_at')
+                                    ->label('Masa Aktif Berakhir Pada')
+                                    ->placeholder('Pilih tanggal & waktu berakhir')
+                                    ->native(false)
+                                    ->helperText('Jika dikosongkan, status akan dianggap Free.'),
+                            ])->columns(2),
                     ])->columns(2),
             ])->columns(1);
     }

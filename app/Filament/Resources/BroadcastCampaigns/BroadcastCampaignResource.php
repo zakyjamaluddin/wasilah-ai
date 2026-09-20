@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\BroadcastCampaigns;
 
+use App\Filament\Resources\BaseResource;
 use App\Filament\Resources\BroadcastCampaigns\Pages\CreateBroadcastCampaign;
 use App\Filament\Resources\BroadcastCampaigns\Pages\EditBroadcastCampaign;
 use App\Filament\Resources\BroadcastCampaigns\Pages\ListBroadcastCampaigns;

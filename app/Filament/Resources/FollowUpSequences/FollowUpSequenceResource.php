@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\FollowUpSequences;
 
+use App\Filament\Resources\BaseResource;
 use App\Filament\Resources\FollowUpSequences\Pages\CreateFollowUpSequence;
 use App\Filament\Resources\FollowUpSequences\Pages\EditFollowUpSequence;
 use App\Filament\Resources\FollowUpSequences\Pages\ListFollowUpSequences;

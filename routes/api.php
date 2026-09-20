@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\PaymentWebhookController;
 use App\Http\Controllers\Api\WhatsAppWebhookController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\LynkIdEmailWebhookController;
 
 
 Route::get('/user', function (Request $request) {
@@ -26,3 +27,6 @@ Route::post('/payment/webhook', [PaymentWebhookController::class, 'handle']);
 
 // Endpoint Webhook Penerima Event Composio (FB & Instagram)
 Route::post('/composio/webhook', [ComposioWebhookController::class, 'handle'])->name('api.composio.webhook');
+
+// Webhook Otomasi Pembayaran Lynk.id via Email Listener
+Route::post('/payment/lynkid-webhook', [LynkIdEmailWebhookController::class, 'handle'])->name('api.payment.lynkid');
