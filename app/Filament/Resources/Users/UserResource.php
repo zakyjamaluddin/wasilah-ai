@@ -13,12 +13,15 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use UnitEnum;
 
 class UserResource extends Resource
 {
     protected static ?string $model = User::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUser;
+    protected static string | UnitEnum | null $navigationGroup = 'Setting & Integration';
+
 
     // Bersifat global agar Super Admin & Admin bisa mengelola user
     protected static bool $isScopedToTenant = false;

@@ -12,3 +12,8 @@ Artisan::command('inspire', function () {
 Schedule::call(function () {
     app(FollowUpEngineService::class)->processDueEnrollments();
 })->everyMinute();
+
+// 🔥 2. JALANKAN PEMERIKSAAN KONEKSI WHATSAPP SETIAP 5 MENIT
+Schedule::command('whatsapp:check-connections')
+    ->everyFiveMinutes()
+    ->runInBackground();

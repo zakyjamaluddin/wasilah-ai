@@ -328,11 +328,12 @@
                             <li class="flex items-center gap-2"><span class="text-emerald-600 font-bold">✓</span> 1 WhatsApp + 1 FB + 1 IG</li>
                             <li class="flex items-center gap-2"><span class="text-emerald-600 font-bold">✓</span> AI Chatbot Gemini Teks & Gambar</li>
                             <li class="flex items-center gap-2"><span class="text-emerald-600 font-bold">✓</span> OmniChat Workspace Live CRM</li>
-                            <li class="flex items-center gap-2"><span class="text-emerald-600 font-bold">✓</span> Maksimal 2.000 Kontak Leads</li>
+                            <li class="flex items-center gap-2"><span class="text-emerald-600 font-bold">✓</span> Unlimited Kontak Leads</li>
+
                         </ul>
                     </div>
-                    <a href="/checkout?plan=starter" class="w-full text-center py-3 rounded-xl border-2 border-slate-200 font-bold text-slate-700 hover:border-teal-600 hover:text-teal-700 transition text-xs">
-                        Pilih Paket Starter 🚀
+                    <a href="/admin" class="w-full text-center py-3 rounded-xl border-2 border-slate-200 font-bold text-slate-700 hover:border-teal-600 hover:text-teal-700 transition text-xs">
+                        Daftar Gratis Sekarang 🚀
                     </a>
                     {{-- <a href="http://lynk.id/zakyjamal/zlgw19zge6p9/checkout" target="_blank" class="w-full text-center py-3 rounded-xl border-2 border-slate-200 font-bold text-slate-700 hover:border-teal-600 hover:text-teal-700 transition text-xs">
                         Pilih Paket Starter
@@ -345,52 +346,27 @@
                         ⭐ Rekomendasi Terbaik
                     </span>
                     <div class="space-y-4">
-                        <span class="text-xs font-bold text-teal-800 uppercase tracking-wider">Multi-Cabang & Agensi</span>
-                        <h3 class="text-2xl font-black text-slate-900">Pro Enterprise</h3>
+                        <span class="text-xs font-bold text-teal-800 uppercase tracking-wider">Langganan 1 Tahun</span>
+                        <h3 class="text-2xl font-black text-slate-900">Serius Eskalasi</h3>
                         <div class="flex items-baseline gap-1">
-                            <span class="text-3xl sm:text-4xl font-black text-slate-900">Rp 185.000</span>
-                            <span class="text-xs text-slate-500 font-semibold">/ bulan</span>
+                            <span class="text-3xl sm:text-4xl font-black text-slate-900">Rp 300.000</span>
+                            <span class="text-xs text-slate-500 font-semibold">/ tahun</span>
                         </div>
-                        <p class="text-xs text-slate-600">Pilihan utama Bisnis Properti, dan Bisnis Multi-Cabang.</p>
+                        <p class="text-xs text-slate-600">Pilihan utama Bisnis Toko Online, Bisnis Properti, dan Bisnis Lainnya yang berniat serius untuk eskalasi.</p>
 
                         <ul class="space-y-2.5 text-xs text-slate-800 pt-4 border-t border-teal-200/60 font-medium">
-                            <li class="flex items-center gap-2"><span class="text-emerald-600 font-bold">✓</span> <b>Hingga 5 Kantor Cabang</b></li>
-                            <li class="flex items-center gap-2"><span class="text-emerald-600 font-bold">✓</span> 5 WhatsApp + 5 FB + 5 IG</li>
-                            <li class="flex items-center gap-2"><span class="text-emerald-600 font-bold">✓</span> <b>Multi-Step Drip Follow-Up Tanpa Batas</b></li>
-                            <li class="flex items-center gap-2"><span class="text-emerald-600 font-bold">✓</span> Dynamic HTML Website Scraper</li>
-                            <li class="flex items-center gap-2"><span class="text-emerald-600 font-bold">✓</span> Broadcast WhatsApp Anti-Banned</li>
+                            <li class="flex items-center gap-2"><span class="text-emerald-600 font-bold">✓</span> 1 Kantor Cabang</li>
+                            <li class="flex items-center gap-2"><span class="text-emerald-600 font-bold">✓</span> 1 WhatsApp + 1 FB + 1 IG</li>
+                            <li class="flex items-center gap-2"><span class="text-emerald-600 font-bold">✓</span> AI Chatbot Gemini Teks & Gambar</li>
+                            <li class="flex items-center gap-2"><span class="text-emerald-600 font-bold">✓</span> OmniChat Workspace Live CRM</li>
                             <li class="flex items-center gap-2"><span class="text-emerald-600 font-bold">✓</span> Unlimited Kontak Leads</li>
                         </ul>
                     </div>
-                    <a href="/checkout?plan=pro" class="w-full text-center py-3.5 rounded-xl bg-gradient-to-r from-teal-700 to-emerald-600 font-extrabold text-white shadow-lg shadow-teal-700/25 hover:shadow-teal-700/40 hover:scale-105 transition text-xs">
-                        Ambil Paket Pro Sekarang 🚀
+                    <a href="/admin" class="w-full text-center py-3.5 rounded-xl bg-gradient-to-r from-teal-700 to-emerald-600 font-extrabold text-white shadow-lg shadow-teal-700/25 hover:shadow-teal-700/40 hover:scale-105 transition text-xs">
+                        Daftar Gratis Sekarang 🚀
                     </a>
                 </div>
 
-                {{-- Tier 3: Custom Agency --}}
-                <div class="rounded-3xl border border-slate-200 bg-white p-8 flex flex-col justify-between space-y-6 hover:shadow-xl transition">
-                    <div class="space-y-4">
-                        <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Custom Skala Besar</span>
-                        <h3 class="text-2xl font-black text-slate-900">Custom White-Label</h3>
-                        <div class="flex items-baseline gap-1">
-                            <span class="text-3xl sm:text-4xl font-black text-slate-900">Rp 25.000</span>
-                            <span class="text-xs text-slate-500 font-semibold">/ bulan per kantor cabang</span>
-                        </div>
-                        <p class="text-xs text-slate-500">Minimal 10 Kantor Cabang</p>
-
-                        <ul class="space-y-2.5 text-xs text-slate-700 pt-4 border-t border-slate-100">
-                            <li class="flex items-center gap-2"><span class="text-emerald-600 font-bold">✓</span> Unlimited Kantor Cabang</li>
-                            <li class="flex items-center gap-2"><span class="text-emerald-600 font-bold">✓</span> Unlimited WA, FB dan Instagram</li>
-                            <li class="flex items-center gap-2"><span class="text-emerald-600 font-bold">✓</span> <b>Multi-Step Drip Follow-Up Tanpa Batas</b></li>
-                            <li class="flex items-center gap-2"><span class="text-emerald-600 font-bold">✓</span> Dynamic HTML Website Scraper</li>
-                            <li class="flex items-center gap-2"><span class="text-emerald-600 font-bold">✓</span> Broadcast WhatsApp Anti-Banned</li>
-                            <li class="flex items-center gap-2"><span class="text-emerald-600 font-bold">✓</span> Unlimited Kontak Leads</li>
-                        </ul>
-                    </div>
-                    <a href="https://lynk.id/zakyjamal/mnqmgzmo6rzx/checkout" target="_blank" class="w-full text-center py-3 rounded-xl border-2 border-slate-200 font-bold text-slate-700 hover:border-teal-600 hover:text-teal-700 transition text-xs">
-                        Konsultasi Khusus
-                    </a>
-                </div>
 
             </div>
 

@@ -62,4 +62,11 @@ return [
         'url_1_year'  => env('LYNKID_URL_1_YEAR', 'https://lynk.id'),
     ],
 
+    // Tambahkan di dalam array return config/services.php:
+    'google' => [
+        'client_id'     => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect'      => env('GOOGLE_REDIRECT_URI', 'https://wasilah-ai.my.id/auth/google/callback'),
+    ],
+
 ];

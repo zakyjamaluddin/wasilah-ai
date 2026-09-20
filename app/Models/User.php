@@ -24,6 +24,11 @@ class User extends Authenticatable implements FilamentUser, HasTenants
         'remember_token',
     ];
 
+    public function getFilamentAvatarUrl(): ?string
+    {
+        return $this->avatar_url;
+    }
+
     protected function casts(): array
     {
         return [

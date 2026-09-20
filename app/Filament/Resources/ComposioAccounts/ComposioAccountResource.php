@@ -14,6 +14,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
+use UnitEnum;
 
 class ComposioAccountResource extends Resource
 {
@@ -23,6 +24,8 @@ class ComposioAccountResource extends Resource
 
     // 🔥 KUNCI PERBAIKAN 1: Matikan scope tenant agar tidak mencari relasi office()
     protected static bool $isScopedToTenant = false;
+    protected static string | UnitEnum | null $navigationGroup = 'Setting & Integration';
+
 
     // 🔥 KUNCI PERBAIKAN 2: Hanya Super Admin yang boleh melihat menu ini di sidebar
     public static function canViewAny(): bool
