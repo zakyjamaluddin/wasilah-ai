@@ -42,7 +42,7 @@
 
     {{-- 🔴 ALERT MERAH: INACTIVE / FREE (Akses Terkunci) --}}
     @if ($status === 'inactive' || $status === 'free')
-        <div style="margin-bottom: 1.5rem; padding: 1rem; border-radius: 0.75rem; border: 1px solid #e11d48; background: linear-gradient(135deg, rgba(225, 29, 72, 0.12), rgba(225, 29, 72, 0.04)); display: flex; flex-direction: column; gap: 0.75rem;" class="fi-subscription-banner">
+        <div style="margin-bottom: 1.5rem; margin-top: 1.5rem; padding: 1rem; border-radius: 0.75rem; border: 1px solid #e11d48; background: linear-gradient(135deg, rgba(225, 29, 72, 0.12), rgba(225, 29, 72, 0.04)); display: flex; flex-direction: column; gap: 0.75rem;" class="fi-subscription-banner">
             <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
                 <div style="display: flex; align-items: center; gap: 0.75rem;">
                     <div style="padding: 0.5rem; border-radius: 0.5rem; background: rgba(225, 29, 72, 0.2); color: #e11d48;">
