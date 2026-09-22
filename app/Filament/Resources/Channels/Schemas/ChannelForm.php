@@ -36,13 +36,27 @@ class ChannelForm
                             ->reactive()
                             ->required(),
 
-                        // Session ID Baileys HANYA wajib diisi jika tipe WhatsApp
+                        // 🔥 DYNAMIC IDENTIFIER FIELD: MENYESUAIKAN PLATFORM
                         TextInput::make('identifier')
-                            ->label('Session ID WhatsApp (VPS)')
-                            ->placeholder('Contoh: kantor_jakarta_wa')
-                            ->visible(fn (Get $get) => $get('type') === 'whatsapp')
+                            ->label(fn (Get $get) => match ($get('type')) {
+                                'whatsapp'  => 'Session ID WhatsApp (VPS)',
+                                'facebook'  => '(Opsional) Facebook Page ID (ID Halaman)',
+                                'instagram' => '(Opsional) Instagram Business Account ID',
+                                default     => 'Identifier / ID Akun',
+                            })
+                            ->placeholder(fn (Get $get) => match ($get('type')) {
+                                'whatsapp'  => 'Contoh: kantor_jakarta_wa',
+                                'facebook'  => 'Contoh: 422099137659003 atau 1178468165341833',
+                                'instagram' => 'Contoh: 17841469669611882',
+                                default     => 'ID unik saluran',
+                            })
                             ->required(fn (Get $get) => $get('type') === 'whatsapp')
-                            ->helperText('ID unik sesi WhatsApp di VPS Baileys.'),
+                            ->helperText(fn (Get $get) => match ($get('type')) {
+                                'whatsapp'  => 'Wajib diisi dengan ID sesi WhatsApp unik di VPS Baileys.',
+                                'facebook'  => 'Otomatis terisi saat login Facebook via Composio, atau masukkan ID Halaman Facebook secara manual untuk mengunci Halaman tertentu pada kantor ini.',
+                                'instagram' => 'Otomatis terisi saat login Instagram via Composio, atau masukkan ID Akun Instagram secara manual.',
+                                default     => null,
+                            }),
 
                         // Prompt Tambahan Khusus Facebook First Comment (Opsional)
                         Textarea::make('credentials.auto_first_comment')

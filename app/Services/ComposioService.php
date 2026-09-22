@@ -149,6 +149,9 @@ class ComposioService
     /**
      * 3. BACKGROUND AUTO-SYNC: Menarik Sesi Aktif KHUSUS Kantor Ini & Mengunci Page ID
      */
+    /**
+     * 3. BACKGROUND AUTO-SYNC DENGAN DUKUNGAN MULTI-PAGE FACEBOOK (Anti Tertimpa)
+     */
     public function autoSyncOfficeChannel(Office $office, string $platform = 'facebook'): ?Channel
     {
         try {
@@ -163,7 +166,7 @@ class ComposioService
             $items = $res->json('items') ?? $res->json('data') ?? [];
             if (empty($items)) return null;
 
-            // Filter akun yang aktif dan sesuai toolkit
+            // Cari sesi yang aktif
             $matchedAccount = null;
             foreach ($items as $item) {
                 $slug = $item['toolkit']['slug'] ?? $item['appName'] ?? '';
@@ -178,47 +181,74 @@ class ComposioService
 
             $connectionId = $matchedAccount['id']; // ca_xxxx milik kantor ini
 
-            // 2. Cari Channel di database
+            // 2. Ambil Channel di database
             $channel = Channel::firstOrCreate(
                 ['office_id' => $office->id, 'type' => $platform],
                 ['name' => strtoupper($platform) . ': ' . $office->name, 'is_bot_enabled' => true]
             );
 
-            // Kunci ID Koneksi Composio ke database
+            // Kunci ID Koneksi Composio ke channel kantor ini
             $channel->update([
                 'composio_entity_id'     => $userId,
                 'composio_connection_id' => $connectionId,
                 'status'                 => 'connected',
             ]);
 
-            // 3. Jika Facebook: Tarik Page ID khusus akun ini
+            // 3. JIKA FACEBOOK: TARIK SELURUH HALAMAN & COCOKKAN SECARA PINTAR
             if ($platform === 'facebook') {
                 $pagesRes = $this->executeAction($office, 'FACEBOOK_LIST_MANAGED_PAGES', [], $connectionId);
                 $pagesData = $pagesRes['data']['data'] ?? $pagesRes['data']['response_data'] ?? [];
                 $pages = isset($pagesData['data']) && is_array($pagesData['data']) ? $pagesData['data'] : (is_array($pagesData) ? $pagesData : []);
 
                 if (!empty($pages)) {
-                    $firstPage = $pages[0];
-                    $pageId = $firstPage['id'] ?? null;
-                    $pageName = $firstPage['name'] ?? null;
+                    $selectedPage = null;
+
+                    // A. Prioritas 1: Jika Channel sudah memiliki Page ID yang valid, pastikan Page ID itu tetap dipertahankan
+                    if (!empty($channel->identifier)) {
+                        foreach ($pages as $p) {
+                            if ((string)($p['id'] ?? '') === (string)$channel->identifier) {
+                                $selectedPage = $p;
+                                break;
+                            }
+                        }
+                    }
+
+                    // B. Prioritas 2: Jika belum ada, cocokkan nama Halaman dengan nama Kantor
+                    if (!$selectedPage) {
+                        $officeNameLower = strtolower($office->name);
+                        foreach ($pages as $p) {
+                            $pageNameLower = strtolower($p['name'] ?? '');
+                            if (str_contains($pageNameLower, $officeNameLower) || str_contains($officeNameLower, $pageNameLower)) {
+                                $selectedPage = $p;
+                                break;
+                            }
+                        }
+                    }
+
+                    // C. Prioritas 3: Fallback ke halaman pertama hanya jika belum ada pilihan sama sekali
+                    if (!$selectedPage) {
+                        $selectedPage = $pages[0];
+                    }
+
+                    $pageId = $selectedPage['id'] ?? null;
+                    $pageName = $selectedPage['name'] ?? null;
 
                     if ($pageId) {
                         $channel->update([
                             'identifier' => (string) $pageId,
                             'name'       => $pageName ? "FB: {$pageName}" : $channel->name,
                         ]);
+                        Log::info("🎯 [FB Smart Page Matcher] Kantor: {$office->name} -> Halaman: {$pageName} (ID: {$pageId})");
                     }
                 }
             }
 
-            Log::info("✅ [Strict Auto-Sync Sukses] Kantor: {$office->slug}, Channel: {$channel->name} (Connection ID: {$connectionId})");
             return $channel;
         } catch (\Throwable $e) {
             Log::error("Exception autoSyncOfficeChannel: " . $e->getMessage());
             return null;
         }
     }
-
     /**
      * 4. CEK KESEHATAN SESI REALTIME (HEALTH CHECKER)
      */
@@ -231,11 +261,11 @@ class ComposioService
             }
 
             $res = $this->client($office)->get("/connected_accounts/{$channel->composio_connection_id}");
-            
+
             if ($res->successful()) {
                 $data = $res->json();
                 $status = strtoupper($data['status'] ?? '');
-                
+
                 if ($status === 'ACTIVE') {
                     if ($channel->status !== 'connected') {
                         $channel->update(['status' => 'connected']);
