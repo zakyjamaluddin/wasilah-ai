@@ -90,29 +90,6 @@ class ChannelsTable
                             ->send();
                     }),
 
-                // 🔄 2B. AUTO-SYNC / CEK FANS PAGE FACEBOOK
-                Action::make('sync_facebook_page')
-                    ->label('Sinkronkan Halaman')
-                    ->icon('heroicon-o-arrow-path')
-                    ->color('success')
-                    ->visible(fn (Channel $record) => $record->type === 'facebook')
-                    ->action(function (Channel $record, ComposioService $composio) use ($currentOffice) {
-                        $result = $composio->syncFacebookPages($currentOffice, $record);
-
-                        if ($result['success']) {
-                            Notification::make()
-                                ->title('✅ Fanspage Berhasil Disinkronkan!')
-                                ->body("Halaman: <b>{$result['page_name']}</b> (ID: {$result['page_id']}) berhasil terhubung otomatis.")
-                                ->success()
-                                ->send();
-                        } else {
-                            Notification::make()
-                                ->title('Gagal Sinkronisasi Halaman')
-                                ->body($result['error'])
-                                ->danger()
-                                ->send();
-                        }
-                    }),
 
                 // 📷 3. INSTAGRAM: ROW ACTION HUBUNGKAN VIA COMPOSIO
                 Action::make('connect_instagram_row')

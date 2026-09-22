@@ -23,6 +23,11 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Matondojk\FilamentSocialLogin\FilamentSocialLoginPlugin;
+use Matondo\FilamentSocialLogin\Provider;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Hash;
+use App\Models\User;
+
 
 class AdminPanelProvider extends PanelProvider
 {

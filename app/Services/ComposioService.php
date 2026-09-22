@@ -64,6 +64,9 @@ class ComposioService
         }
     }
 
+    /**
+     * 1. Inisiasi Sesi OAuth Terisolasi per Kantor
+     */
     public function initiateOAuth(Office $office, string $appName = 'facebook'): ?string
     {
         try {
@@ -73,6 +76,7 @@ class ComposioService
             $authConfigId = $this->getAuthConfigId($office, $toolkit);
             if (!$authConfigId) return null;
 
+            // Redirect kembali ke halaman channel kantor tersebut
             $callbackUrl = url("/admin/{$office->slug}/channels");
 
             $response = $this->client($office)->post('/connected_accounts/link', [
@@ -93,20 +97,27 @@ class ComposioService
         }
     }
 
-    public function executeAction(Office $office, string $toolSlug, array $params = []): array
+    /**
+     * 2. EKSEKUTOR ACTION DENGAN ISOLASI KONEKSI KETAT (Strict Session Guard)
+     */
+    public function executeAction(Office $office, string $toolSlug, array $params = [], ?string $connectedAccountId = null): array
     {
         try {
             $userId = "office_{$office->id}_{$office->slug}";
-
-            // 🔥 KUNCI PERBAIKAN: Jika params kosong, jadikan JSON Object {} (bukan array [])
             $arguments = empty($params) ? (object) [] : $params;
 
-            $response = $this->client($office)->post("/tools/execute/{$toolSlug}", [
+            $payload = [
                 'user_id'   => $userId,
                 'arguments' => $arguments,
                 'version'   => 'latest',
-            ]);
+            ];
 
+            // 🔥 KUNCI UTAMA ISOLASI: Jika ada connected_account_id spesifik, kunci eksekusi ke akun tersebut!
+            if ($connectedAccountId) {
+                $payload['connected_account_id'] = $connectedAccountId;
+            }
+
+            $response = $this->client($office)->post("/tools/execute/{$toolSlug}", $payload);
             $json = $response->json();
 
             if ($response->successful() && ($json['successful'] ?? true) && empty($json['error'])) {
@@ -117,8 +128,9 @@ class ComposioService
             }
 
             Log::error("Composio Action Failed [{$toolSlug}]:", [
-                'office'   => $office->slug,
-                'response' => $json,
+                'office'               => $office->slug,
+                'connected_account_id' => $connectedAccountId,
+                'response'             => $json,
             ]);
 
             return [
@@ -134,216 +146,170 @@ class ComposioService
         }
     }
 
+    /**
+     * 3. BACKGROUND AUTO-SYNC: Menarik Sesi Aktif KHUSUS Kantor Ini & Mengunci Page ID
+     */
+    public function autoSyncOfficeChannel(Office $office, string $platform = 'facebook'): ?Channel
+    {
+        try {
+            $userId = "office_{$office->id}_{$office->slug}";
+            $toolkitSlug = $platform === 'instagram' ? 'instagram' : 'facebook';
 
+            // 1. Tarik akun terkoneksi KHUSUS user_id kantor ini
+            $res = $this->client($office)->get('/connected_accounts', [
+                'user_id' => $userId,
+            ]);
+
+            $items = $res->json('items') ?? $res->json('data') ?? [];
+            if (empty($items)) return null;
+
+            // Filter akun yang aktif dan sesuai toolkit
+            $matchedAccount = null;
+            foreach ($items as $item) {
+                $slug = $item['toolkit']['slug'] ?? $item['appName'] ?? '';
+                $status = strtoupper($item['status'] ?? '');
+                if (strtolower($slug) === $toolkitSlug && $status === 'ACTIVE') {
+                    $matchedAccount = $item;
+                    break;
+                }
+            }
+
+            if (!$matchedAccount) return null;
+
+            $connectionId = $matchedAccount['id']; // ca_xxxx milik kantor ini
+
+            // 2. Cari Channel di database
+            $channel = Channel::firstOrCreate(
+                ['office_id' => $office->id, 'type' => $platform],
+                ['name' => strtoupper($platform) . ': ' . $office->name, 'is_bot_enabled' => true]
+            );
+
+            // Kunci ID Koneksi Composio ke database
+            $channel->update([
+                'composio_entity_id'     => $userId,
+                'composio_connection_id' => $connectionId,
+                'status'                 => 'connected',
+            ]);
+
+            // 3. Jika Facebook: Tarik Page ID khusus akun ini
+            if ($platform === 'facebook') {
+                $pagesRes = $this->executeAction($office, 'FACEBOOK_LIST_MANAGED_PAGES', [], $connectionId);
+                $pagesData = $pagesRes['data']['data'] ?? $pagesRes['data']['response_data'] ?? [];
+                $pages = isset($pagesData['data']) && is_array($pagesData['data']) ? $pagesData['data'] : (is_array($pagesData) ? $pagesData : []);
+
+                if (!empty($pages)) {
+                    $firstPage = $pages[0];
+                    $pageId = $firstPage['id'] ?? null;
+                    $pageName = $firstPage['name'] ?? null;
+
+                    if ($pageId) {
+                        $channel->update([
+                            'identifier' => (string) $pageId,
+                            'name'       => $pageName ? "FB: {$pageName}" : $channel->name,
+                        ]);
+                    }
+                }
+            }
+
+            Log::info("✅ [Strict Auto-Sync Sukses] Kantor: {$office->slug}, Channel: {$channel->name} (Connection ID: {$connectionId})");
+            return $channel;
+        } catch (\Throwable $e) {
+            Log::error("Exception autoSyncOfficeChannel: " . $e->getMessage());
+            return null;
+        }
+    }
 
     /**
-     * 1. Kirim DM Facebook Messenger
+     * 4. CEK KESEHATAN SESI REALTIME (HEALTH CHECKER)
+     */
+    public function checkConnectionHealth(Office $office, Channel $channel): bool
+    {
+        try {
+            if (!$channel->composio_connection_id) {
+                $channel->update(['status' => 'disconnected']);
+                return false;
+            }
+
+            $res = $this->client($office)->get("/connected_accounts/{$channel->composio_connection_id}");
+            
+            if ($res->successful()) {
+                $data = $res->json();
+                $status = strtoupper($data['status'] ?? '');
+                
+                if ($status === 'ACTIVE') {
+                    if ($channel->status !== 'connected') {
+                        $channel->update(['status' => 'connected']);
+                    }
+                    return true;
+                }
+            }
+
+            // Jika status EXPIRED atau DELETED, set disconnected
+            $channel->update(['status' => 'disconnected']);
+            Log::warning("⚠️ [Session Expired] Sesi Channel {$channel->name} ({$channel->id}) telah kedaluwarsa di Meta.");
+            return false;
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    /**
+     * 5. Kirim Pesan Facebook Messenger (Terisolasi)
      */
     public function sendFacebookMessenger(Office $office, string $recipientId, string $message, ?string $pageId = null): array
     {
-        $pageId = $pageId ?: $this->getFacebookPageId($office);
-
-        if (!$pageId) {
-            return [
-                'success' => false,
-                'error'   => 'Facebook Page ID belum ditemukan. Pastikan akun FB sudah terhubung.',
-            ];
-        }
+        $channel = Channel::where('office_id', $office->id)->where('type', 'facebook')->first();
+        $connectionId = $channel?->composio_connection_id;
+        $pageId = $pageId ?: $channel?->identifier;
 
         return $this->executeAction($office, 'FACEBOOK_SEND_MESSAGE', [
             'page_id'      => (string) $pageId,
             'recipient_id' => (string) $recipientId,
             'message_text' => $message,
-        ]);
+        ], $connectionId);
     }
 
     /**
-     * 2. Balas Komentar Facebook Post
+     * 6. Balas Komentar Facebook (Terisolasi)
      */
     public function replyFacebookComment(Office $office, string $commentId, string $message): array
     {
+        $channel = Channel::where('office_id', $office->id)->where('type', 'facebook')->first();
+        $connectionId = $channel?->composio_connection_id;
+
         return $this->executeAction($office, 'FACEBOOK_CREATE_COMMENT', [
             'object_id'    => (string) $commentId,
             'message'      => $message,
             'message_text' => $message,
-        ]);
+        ], $connectionId);
     }
 
     /**
-     * 3. Kirim DM Instagram
-     */
-   /**
-     * Cari PSID Asli Pengirim Instagram dari Obrolan Terakhir
-     */
-    /**
-     * Cari PSID Asli Pengirim Instagram dari Obrolan Terakhir
-     */
-    public function getLatestInstagramSender(Office $office): ?array
-    {
-        try {
-            // 1. Ambil daftar percakapan
-            $convs = $this->executeAction($office, 'INSTAGRAM_LIST_ALL_CONVERSATIONS');
-            $convItems = $convs['data']['data']['data'] ?? $convs['data']['data'] ?? [];
-
-            if (empty($convItems)) return null;
-
-            $latestConvId = $convItems[0]['id'] ?? null;
-            if (!$latestConvId) return null;
-
-            // 2. Ambil butir pesan terakhir dari percakapan tersebut
-            $messagesRes = $this->executeAction($office, 'INSTAGRAM_LIST_ALL_MESSAGES', [
-                'conversation_id' => $latestConvId,
-            ]);
-
-            $messages = $messagesRes['data']['data']['data'] ?? $messagesRes['data']['data'] ?? [];
-            if (empty($messages)) return null;
-
-            $latestMsg = $messages[0] ?? [];
-
-            // Pengirim (Customer)
-            $senderPsid = $latestMsg['from']['id'] ?? null;
-            $senderUsername = $latestMsg['from']['username'] ?? 'User';
-
-            // Penerima (Akun IG Bisnis Saya)
-            $myIgData = $latestMsg['to']['data'][0] ?? [];
-            $myIgUsername = $myIgData['username'] ?? 'Akun Saya';
-            $myIgId = $myIgData['id'] ?? '-';
-
-            $messageMid = $latestMsg['id'] ?? null;
-            $messageText = $latestMsg['message'] ?? '';
-
-            if ($senderPsid) {
-                // 🔥 LOG TRANSPARAN & LENGKAP
-                Log::info("==================================================");
-                Log::info("🎯 [IG REAL PSID & ACCOUNT DETECTED]");
-                Log::info("🏢 Akun IG Saya (Toko) : @{$myIgUsername} (ID: {$myIgId})");
-                Log::info("👤 Pengirim (Sender)   : @{$senderUsername} (PSID: {$senderPsid})");
-                Log::info("✉️ Pesan Terakhir      : \"{$messageText}\"");
-                Log::info("🔑 Message ID (MID)    : {$messageMid}");
-                Log::info("==================================================");
-
-                return [
-                    'psid'            => (string) $senderPsid,
-                    'sender_username' => $senderUsername,
-                    'my_ig_username'  => $myIgUsername,
-                    'my_ig_id'        => $myIgId,
-                    'mid'             => $messageMid,
-                    'text'            => $messageText,
-                ];
-            }
-
-            return null;
-        } catch (\Throwable $e) {
-            Log::error("Exception getLatestInstagramSender: " . $e->getMessage());
-            return null;
-        }
-    }
-
-    /**
-     * 3. Kirim DM Instagram (Direct Message)
+     * 7. Kirim DM Instagram (Terisolasi)
      */
     public function sendInstagramDm(Office $office, string $recipientId, string $message): array
     {
+        $channel = Channel::where('office_id', $office->id)->where('type', 'instagram')->first();
+        $connectionId = $channel?->composio_connection_id;
+
         return $this->executeAction($office, 'INSTAGRAM_SEND_TEXT_MESSAGE', [
             'recipient_id' => (string) $recipientId,
             'text'         => $message,
-        ]);
+        ], $connectionId);
     }
 
     /**
-     * 4. Balas Komentar Instagram
+     * 8. Balas Komentar Instagram (Terisolasi)
      */
     public function replyInstagramComment(Office $office, string $commentId, string $message): array
     {
-        return $this->executeAction($office, 'INSTAGRAM_POST_IG_COMMENT_REPLIES', [
-            'ig_comment_id'   => (string) $commentId,
+        $channel = Channel::where('office_id', $office->id)->where('type', 'instagram')->first();
+        $connectionId = $channel?->composio_connection_id;
+
+        return $this->executeAction($office, 'INSTAGRAM_CREATE_MEDIA_COMMENT_REPLY', [
+            'comment_id'   => (string) $commentId,
             'message'      => $message,
             'message_text' => $message,
-        ]);
-    }
-
-
-    /**
-     * SINKRONISASI OTOMATIS: Tarik seluruh Fanspage Facebook & Update Channel di DB
-     */
-    public function syncFacebookPages(Office $office, ?Channel $channel = null): array
-    {
-        try {
-            // Eksekusi tool FACEBOOK_LIST_MANAGED_PAGES ke Composio
-            $res = $this->executeAction($office, 'FACEBOOK_LIST_MANAGED_PAGES');
-
-            if (!$res['success']) {
-                return [
-                    'success' => false,
-                    'error'   => $res['error'] ?? 'Gagal menarik daftar Fanspage dari Facebook.',
-                ];
-            }
-
-            // Ekstrak array pages dari berbagai kemungkinan nesting format Composio
-            $data = $res['data']['data'] ?? $res['data']['response_data'] ?? $res['data'] ?? [];
-            $pages = isset($data['data']) && is_array($data['data']) ? $data['data'] : (is_array($data) ? $data : []);
-
-            if (empty($pages)) {
-                return [
-                    'success' => false,
-                    'error'   => 'Tidak ada Fanspage Facebook yang ditemukan pada akun ini.',
-                ];
-            }
-
-            // Ambil data Halaman Facebook pertama yang dikelola
-            $firstPage = $pages[0] ?? [];
-            $pageId    = $firstPage['id'] ?? null;
-            $pageName  = $firstPage['name'] ?? null;
-
-            if (!$pageId) {
-                return [
-                    'success' => false,
-                    'error'   => 'Page ID tidak ditemukan di dalam respon Facebook.',
-                ];
-            }
-
-            // Cari atau update Channel Facebook kantor ini
-            $targetChannel = $channel ?: Channel::where('office_id', $office->id)->where('type', 'facebook')->first();
-
-            if ($targetChannel) {
-                $targetChannel->update([
-                    'identifier' => (string) $pageId,
-                    'name'       => $pageName ? "FB: {$pageName}" : $targetChannel->name,
-                    'status'     => 'connected',
-                ]);
-            }
-
-            Log::info("✅ [Auto-Sync FB Page Berhasil] Office: {$office->slug}, Page: {$pageName} ({$pageId})");
-
-            return [
-                'success'   => true,
-                'page_id'   => (string) $pageId,
-                'page_name' => $pageName,
-                'channel'   => $targetChannel,
-            ];
-        } catch (\Throwable $e) {
-            Log::error("Exception syncFacebookPages: " . $e->getMessage());
-            return [
-                'success' => false,
-                'error'   => $e->getMessage(),
-            ];
-        }
-    }
-
-    /**
-     * Helper Cerdas: Dapatkan Facebook Page ID (Auto-Sync jika belum ada)
-     */
-    public function getFacebookPageId(Office $office): ?string
-    {
-        $channel = Channel::where('office_id', $office->id)->where('type', 'facebook')->first();
-
-        // 1. Jika sudah ada di database, langsung pakai
-        if ($channel && !empty($channel->identifier) && is_numeric($channel->identifier)) {
-            return $channel->identifier;
-        }
-
-        // 2. Jika belum ada, jalankan auto-sync ke Composio
-        $syncResult = $this->syncFacebookPages($office, $channel);
-        return $syncResult['success'] ? $syncResult['page_id'] : null;
+        ], $connectionId);
     }
 }

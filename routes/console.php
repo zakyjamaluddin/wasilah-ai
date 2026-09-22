@@ -17,3 +17,5 @@ Schedule::call(function () {
 Schedule::command('whatsapp:check-connections')
     ->everyFiveMinutes()
     ->runInBackground();
+    
+Schedule::command('channels:check-sessions')->everyThirtyMinutes();
