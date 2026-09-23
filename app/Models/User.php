@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable implements FilamentUser, HasTenants
@@ -59,5 +60,37 @@ class User extends Authenticatable implements FilamentUser, HasTenants
     public function canAccessPanel(Panel $panel): bool
     {
         return true;
+    }
+
+    protected static function booted(): void
+    {
+        // Otomatis buatkan kantor default jika user baru dibuat dan belum memiliki kantor
+        static::created(function (User $user) {
+            if ($user->offices()->count() === 0) {
+                $fullName = $user->name ?: 'Utama';
+                $officeName = 'Kantor ' . Str::headline($fullName);
+                $uniqueSlug = Str::slug($officeName) . '-' . Str::lower(Str::random(4));
+
+                while (Office::where('slug', $uniqueSlug)->exists()) {
+                    $uniqueSlug = Str::slug($officeName) . '-' . Str::lower(Str::random(4));
+                }
+
+                $office = Office::create([
+                    'name'                => $officeName,
+                    'slug'                => $uniqueSlug,
+                    'is_active'           => true,
+                    'subscription_status' => 'free',
+                    'expired_at'          => null,
+                ]);
+
+                $user->offices()->attach($office->id);
+
+                if (method_exists($user, 'assignRole')) {
+                    try {
+                        $user->assignRole('admin');
+                    } catch (\Throwable $e) {}
+                }
+            }
+        });
     }
 }

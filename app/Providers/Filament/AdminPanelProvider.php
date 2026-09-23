@@ -25,8 +25,10 @@ use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Matondojk\FilamentSocialLogin\FilamentSocialLoginPlugin;
 use Matondo\FilamentSocialLogin\Provider;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Hash;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Laravel\Socialite\Contracts\User as SocialiteUser;
 
 
 class AdminPanelProvider extends PanelProvider
@@ -73,6 +75,65 @@ class AdminPanelProvider extends PanelProvider
             ->plugins([
                 FilamentShieldPlugin::make(),
                 FilamentSocialLoginPlugin::make()
+                    // ->providers([
+                    //     Provider::make('google')
+                    //         ->label('Masuk dengan Google')
+                    //         ->icon('heroicon-m-globe-alt')
+                    //         ->color('danger'),
+                    // ])
+                    // // 🔥 LOGIKA OTOMATIS SAAT USER BARU LOGIN GOOGLE
+                    // ->createUserUsing(function (string $provider, SocialiteUser $oauthUser) {
+                    //     return DB::transaction(function () use ($oauthUser) {
+                    //         $email = strtolower(trim($oauthUser->getEmail()));
+                    //         $fullName = $oauthUser->getName() ?? $oauthUser->getNickname() ?? 'Pengguna Google';
+
+                    //         // 1. Cari atau buat data User di tabel `users`
+                    //         $user = User::firstOrCreate(
+                    //             ['email' => $email],
+                    //             [
+                    //                 'name'              => $fullName,
+                    //                 'password'          => Hash::make(Str::random(32)), // Random hash aman
+                    //                 'email_verified_at' => now(),
+                    //             ]
+                    //         );
+
+                    //         // 2. Cek apakah user sudah memiliki kantor atau belum
+                    //         if ($user->offices()->count() === 0) {
+                    //             // Generate nama & slug kantor yang unik
+                    //             $officeName = 'Kantor ' . Str::headline($fullName);
+                    //             $baseSlug = Str::slug($officeName);
+                    //             $uniqueSlug = $baseSlug . '-' . Str::lower(Str::random(4));
+
+                    //             // Pastikan slug benar-benar unik di database
+                    //             while (Office::where('slug', $uniqueSlug)->exists()) {
+                    //                 $uniqueSlug = $baseSlug . '-' . Str::lower(Str::random(4));
+                    //             }
+
+                    //             // 3. Buat Kantor Default Baru (Status: Free)
+                    //             $office = Office::create([
+                    //                 'name'                => $officeName,
+                    //                 'slug'                => $uniqueSlug,
+                    //                 'is_active'           => true,
+                    //                 'subscription_status' => 'free', // Menggunakan sistem subscription tenant kita
+                    //                 'expired_at'          => null,
+                    //             ]);
+
+                    //             // 4. Hubungkan User ke Kantor di tabel pivot `office_user`
+                    //             $user->offices()->attach($office->id);
+
+                    //             // 5. Pasang Role 'admin' pemilik kantor (Spatie Permission)
+                    //             if (method_exists($user, 'assignRole')) {
+                    //                 try {
+                    //                     $user->assignRole('admin');
+                    //                 } catch (\Throwable $e) {
+                    //                     // Abaikan jika role belum dimigrasi
+                    //                 }
+                    //             }
+                    //         }
+
+                    //         return $user;
+                    //     });
+                    // }),
             ])
             ->renderHook(
                 PanelsRenderHook::PAGE_START,
