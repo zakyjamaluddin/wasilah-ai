@@ -23,7 +23,7 @@ class Subscription extends Page
     protected static ?string $slug = 'subscription';
     protected static ?int $navigationSort = 5;
 
-    protected static string $view = 'filament.pages.subscription';
+    protected string $view = 'filament.pages.subscription';
 
     // State Modal Checkout Lynk.id
     public bool $showCheckoutModal = false;

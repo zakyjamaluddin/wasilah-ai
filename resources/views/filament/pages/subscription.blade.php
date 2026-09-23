@@ -3,11 +3,11 @@
     {{-- ========================================================================= --}}
     @if ($showCheckoutModal)
         <div style="position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.6); padding: 1rem; backdrop-filter: blur(4px);">
-            
+
             {{-- AUTO-POLL: Cek status bayar tiap 3 detik saat menunggu pembayaran --}}
             <div @if($waitingForPayment) wire:poll.3000ms="checkPaymentStatus" @endif
                  style="width: 100%; max-width: 480px; background: white; border-radius: 1rem; padding: 1.5rem; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); color: #1e293b;" class="dark:bg-gray-900 dark:text-white">
-                
+
                 @if (!$waitingForPayment)
                     {{-- 🟢 STEP 1: PILIH PAKET --}}
                     <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(128,128,128,0.2); padding-bottom: 0.75rem;">
