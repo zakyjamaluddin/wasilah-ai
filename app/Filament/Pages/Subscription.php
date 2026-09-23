@@ -17,38 +17,34 @@ class Subscription extends Page
 {
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRocketLaunch;
     protected static string | UnitEnum | null $navigationGroup = 'Setting & Integration';
+    
     protected static ?string $navigationLabel = 'Langganan (Subscription)';
     protected static ?string $title = 'Kelola Langganan Kantor';
     protected static ?string $slug = 'subscription';
     protected static ?int $navigationSort = 5;
+
+    protected static string $view = 'filament.pages.subscription';
 
     // State Modal Checkout Lynk.id
     public bool $showCheckoutModal = false;
     public ?int $selectedOfficeId = null;
     public string $selectedPlan = '1_month'; // '1_month' atau '1_year'
 
-    protected string $view = 'filament.pages.subscription';
+    // State Menunggu Verifikasi Pembayaran (Tab Baru Dibuka)
+    public bool $waitingForPayment = false;
+    public ?string $activeOrderCode = null;
 
-    /**
-     * Halaman ini SELALU BISA DIAKSES oleh tenant dalam status apapun (free/active/expiring/inactive).
-     */
     public static function shouldRegisterNavigation(): bool
     {
         return true;
     }
 
-    /**
-     * Dapatkan data kantor yang sedang aktif dibuka.
-     */
     public function getCurrentOfficeProperty(): ?Office
     {
         $tenant = Filament::getTenant();
         return $tenant instanceof Office ? $tenant : null;
     }
 
-    /**
-     * Dapatkan semua kantor yang dikelola oleh user yang sedang login.
-     */
     public function getUserOfficesProperty()
     {
         $user = Auth::user();
@@ -61,37 +57,17 @@ class Subscription extends Page
         return $user->offices()->orderBy('name')->get();
     }
 
-    /**
-     * Aksi pemicu tombol perpanjang langganan.
-     */
-    public function renewSubscription(int $officeId)
-    {
-        $targetOffice = Office::find($officeId);
-        if (!$targetOffice) return;
-
-        Notification::make()
-            ->title('🚀 Menuju Pembayaran')
-            ->body("Permintaan perpanjangan untuk kantor <b>{$targetOffice->name}</b> sedang diproses.")
-            ->info()
-            ->send();
-
-        // Nantinya bisa dialihkan ke rute checkout payment gateway
-        // return redirect()->route('checkout.show', ['office' => $targetOffice->slug]);
-    }
-
-
-    /**
-     * Buka Modal Pilihan Paket Pembayaran
-     */
     public function openPaymentModal(int $officeId)
     {
         $this->selectedOfficeId = $officeId;
         $this->selectedPlan = '1_month';
+        $this->waitingForPayment = false;
+        $this->activeOrderCode = null;
         $this->showCheckoutModal = true;
     }
 
     /**
-     * Eksekusi Checkout: Buat Order Pending & Redirect ke Lynk.id
+     * Buka Lynk.id di Tab Baru & Masuk ke Mode Menunggu Pembayaran
      */
     public function proceedToLynkPayment()
     {
@@ -106,7 +82,7 @@ class Subscription extends Page
         $amount = $this->selectedPlan === '1_year' ? 300000 : 37000;
         $orderCode = 'ORD-' . strtoupper(Str::random(10));
 
-        // 1. Simpan Niat Bayar (Pending Order) ke Database
+        // 1. Simpan Order Pending
         SubscriptionOrder::create([
             'order_code'       => $orderCode,
             'user_id'          => $user->id,
@@ -118,21 +94,47 @@ class Subscription extends Page
             'payment_provider' => 'lynkid',
         ]);
 
-        // 2. Ambil Link Lynk.id dari config/.env
+        $this->activeOrderCode = $orderCode;
+        $this->waitingForPayment = true;
+
+        // 2. Ambil Link Lynk.id
         $paymentUrl = $this->selectedPlan === '1_year'
             ? config('services.lynkid.url_1_year')
             : config('services.lynkid.url_1_month');
 
-        $this->showCheckoutModal = false;
+        // 3. Buka Link Pembayaran di TAB BARU (Window Open)
+        $this->js("window.open('{$paymentUrl}', '_blank');");
 
         Notification::make()
-            ->title('🚀 Menuju Halaman Pembayaran Lynk.id')
-            ->body("Pastikan Anda menggunakan email <b>{$user->email}</b> saat checkout di Lynk.id agar sistem dapat mengaktifkan kantor <b>{$office->name}</b> secara otomatis.")
-            ->success()
-            ->persistent()
+            ->title('Tab Pembayaran Dibuka')
+            ->body("Silakan selesaikan pembayaran di tab Lynk.id yang baru terbuka.")
+            ->info()
             ->send();
+    }
 
-        // 3. Arahkan Pengguna ke Lynk.id
-        return redirect()->away($paymentUrl);
+    /**
+     * Polling Otomatis Setiap 3 Detik: Deteksi jika Webhook Email sudah memvalidasi pembayaran
+     */
+    public function checkPaymentStatus()
+    {
+        if (!$this->waitingForPayment || !$this->activeOrderCode) {
+            return;
+        }
+
+        $order = SubscriptionOrder::where('order_code', $this->activeOrderCode)->first();
+
+        if ($order && $order->status === 'paid') {
+            $this->waitingForPayment = false;
+            $this->showCheckoutModal = false;
+            $this->activeOrderCode = null;
+
+            Notification::make()
+                ->title('🎉 Pembayaran Berhasil Terverifikasi!')
+                ->body("Langganan kantor <b>{$order->office->name}</b> telah aktif dan diperpanjang.")
+                ->success()
+                ->persistent()
+                ->send();
+        }
     }
 }
+
