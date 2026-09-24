@@ -39,21 +39,28 @@ Route::get('/checkout/invoice/{invoice}', [CheckoutController::class, 'invoice']
 Route::post('/checkout/pay/{invoice}', [CheckoutController::class, 'pay'])->name('checkout.pay');
 
 
-
 Route::get('/debug-composio', function (ComposioService $composio) {
     // 1. Ambil Kantor Mutamtour Babat (Office ID 4)
     $office = Office::find(4);
 
+    if (!$office) {
+        return response()->json(['error' => 'Kantor ID 4 tidak ditemukan'], 404);
+    }
+
     // 2. Jalankan Auto-Sync & Simpan Token Cara V1
     $channel = $composio->autoSyncOfficeChannel($office, 'facebook');
 
+    // Ambil token secara aman dengan pengaman ?? null
+    $credentials = $channel?->credentials ?? [];
+    $token = $credentials['access_token'] ?? null;
+
     return response()->json([
-        'pesan'               => 'Halaman Mutamtour Babat berhasil disimpan dengan Token Cara V1!',
-        'office_name'         => $office->name,
-        'channel_name'        => $channel?->name,
-        'page_id'             => $channel?->identifier,
-        'has_token_in_db'     => !empty($channel?->credentials['access_token']),
-        'token_preview'       => $channel?->credentials['access_token'] ? substr($channel->credentials['access_token'], 0, 15) . '...' : null,
-        'status'              => $channel?->status,
+        'pesan'           => 'Pengecekan Halaman Mutamtour Babat Selesai!',
+        'office_name'     => $office->name,
+        'channel_name'    => $channel?->name,
+        'page_id'         => $channel?->identifier,
+        'has_token_in_db' => !empty($token),
+        'token_preview'   => $token ? substr($token, 0, 15) . '...' : 'Token belum tersimpan / diredact oleh Composio',
+        'status'          => $channel?->status,
     ], 200, [], JSON_PRETTY_PRINT);
 });
