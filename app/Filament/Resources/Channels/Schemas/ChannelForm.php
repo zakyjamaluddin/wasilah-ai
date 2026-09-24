@@ -58,15 +58,39 @@ class ChannelForm
                                 default     => null,
                             }),
 
-                        // Prompt Tambahan Khusus Facebook First Comment (Opsional)
+                        // Textarea::make('credentials.access_token')
+                        //     ->label('Page Access Token (Permanent / Long-Lived)')
+                        //     ->placeholder('EAAxxxxxx...')
+                        //     ->rows(2)
+                        //     ->required(fn (Get $get) => in_array($get('type'), ['facebook', 'instagram']))
+                        //     ->helperText('Token akses Halaman Facebook atau Instagram Bisnis Anda.'),
+
+                        // // Prompt Tambahan Khusus Facebook First Comment (Opsional)
+                        // Textarea::make('credentials.auto_first_comment')
+                        //     ->label('Instruksi / Pesan Auto First Comment (Khusus FB Post)')
+                        //     ->placeholder('Contoh: Halo Kak! Hubungi WhatsApp kami di wa.me/628xxx untuk info promo terbaru.')
+                        //     ->rows(2)
+                        //     ->visible(fn (Get $get) => $get('type') === 'facebook')
+                        //     ->helperText('Pesan/komentar promosi otomatis yang akan diposting pertama kali saat ada postingan baru di Fanspage FB.'),
+                    ])->columns(2),
+
+                Section::make('Kredensial Meta Graph API')
+                    ->visible(fn (Get $get) => in_array($get('type'), ['facebook', 'instagram']))
+                    ->schema([
+                        Textarea::make('credentials.access_token')
+                            ->label('Page Access Token (Permanent / Long-Lived)')
+                            ->placeholder('EAAxxxxxx...')
+                            ->rows(3)
+                            ->required(fn (Get $get) => in_array($get('type'), ['facebook', 'instagram']))
+                            ->helperText('Token akses Halaman Facebook atau Instagram Bisnis Anda.'),
+
                         Textarea::make('credentials.auto_first_comment')
-                            ->label('Instruksi / Pesan Auto First Comment (Khusus FB Post)')
+                            ->label('Pesan Auto First Comment (Khusus Postingan FB Baru)')
                             ->placeholder('Contoh: Halo Kak! Hubungi WhatsApp kami di wa.me/628xxx untuk info promo terbaru.')
                             ->rows(2)
                             ->visible(fn (Get $get) => $get('type') === 'facebook')
-                            ->helperText('Pesan/komentar promosi otomatis yang akan diposting pertama kali saat ada postingan baru di Fanspage FB.'),
-                    ])->columns(2),
-
+                            ->helperText('Otomatis diposting sebagai komentar pertama setiap ada postingan baru di Fanspage.'),
+                    ]),
                 Section::make('🤖 Pengaturan Otomasi AI Chatbot')
                     ->schema([
                         Toggle::make('is_bot_enabled')

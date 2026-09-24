@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Channels\Tables;
 
 use App\Models\Channel;
 use App\Services\ComposioService;
+use App\Services\MetaGraphService;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
@@ -63,62 +64,95 @@ class ChannelsTable
                     ->modalContent(fn (Channel $record) => view('filament.qr-modal-wrapper', ['channelId' => $record->id])),
 
                 // 🔵 2. FACEBOOK: ROW ACTIONS
-                Action::make('connect_facebook_row')
-                    ->label(fn (Channel $record) => $record->status === 'connected' ? 'Hubungkan Ulang' : 'Hubungkan Facebook')
-                    ->icon('heroicon-m-link')
+                // Action::make('connect_facebook_row')
+                //     ->label(fn (Channel $record) => $record->status === 'connected' ? 'Hubungkan Ulang' : 'Hubungkan Facebook')
+                //     ->icon('heroicon-m-link')
+                //     ->color('info')
+                //     ->visible(fn (Channel $record) => $record->type === 'facebook')
+                //     ->action(function (Channel $record, ComposioService $composio) use ($currentOffice) {
+                //         if (!$currentOffice->composio_account_id) {
+                //             Notification::make()
+                //                 ->title('Akun Composio Belum Dipilih!')
+                //                 ->body('Silakan pilih Akun Composio pada pengaturan Kantor ini terlebih dahulu.')
+                //                 ->danger()
+                //                 ->send();
+                //             return;
+                //         }
+
+                //         $authUrl = $composio->initiateOAuth($currentOffice, 'facebook');
+
+                //         if ($authUrl) {
+                //             return redirect()->away($authUrl);
+                //         }
+
+                //         Notification::make()
+                //             ->title('Gagal Memulai Sesi Composio')
+                //             ->danger()
+                //             ->send();
+                //     }),
+
+
+                // // 📷 3. INSTAGRAM: ROW ACTION HUBUNGKAN VIA COMPOSIO
+                // Action::make('connect_instagram_row')
+                //     ->label(fn (Channel $record) => $record->status === 'connected' ? 'Hubungkan Ulang' : 'Hubungkan Instagram')
+                //     ->icon('heroicon-m-camera')
+                //     ->color('warning')
+                //     ->visible(fn (Channel $record) => $record->type === 'instagram')
+                //     ->action(function (Channel $record, ComposioService $composio) use ($currentOffice) {
+                //         if (!$currentOffice->composio_account_id) {
+                //             Notification::make()
+                //                 ->title('Akun Composio Belum Dipilih!')
+                //                 ->body('Silakan pilih Akun Composio pada pengaturan Kantor ini terlebih dahulu.')
+                //                 ->danger()
+                //                 ->send();
+                //             return;
+                //         }
+
+                //         $authUrl = $composio->initiateOAuth($currentOffice, 'instagram');
+
+                //         if ($authUrl) {
+                //             $record->update(['status' => 'connected']);
+                //             return redirect()->away($authUrl);
+                //         }
+
+                //         Notification::make()
+                //             ->title('Gagal Memulai Sesi Composio')
+                //             ->body('Periksa kembali API Key dan konfigurasi Composio Anda.')
+                //             ->danger()
+                //             ->send();
+                //     }),
+
+                // 🔄 2. FACEBOOK & INSTAGRAM: CEK KONEKSI & DAFTARKAN WEBHOOK CARA V1
+                Action::make('syncMeta')
+                    ->label('Cek & Subscribe Webhook')
+                    ->icon('heroicon-o-arrow-path')
                     ->color('info')
-                    ->visible(fn (Channel $record) => $record->type === 'facebook')
-                    ->action(function (Channel $record, ComposioService $composio) use ($currentOffice) {
-                        if (!$currentOffice->composio_account_id) {
-                            Notification::make()
-                                ->title('Akun Composio Belum Dipilih!')
-                                ->body('Silakan pilih Akun Composio pada pengaturan Kantor ini terlebih dahulu.')
-                                ->danger()
-                                ->send();
+                    ->visible(fn (Channel $record) => in_array($record->type, ['facebook', 'instagram']))
+                    ->action(function (Channel $record, MetaGraphService $meta) {
+                        $token = $record->credentials['access_token'] ?? null;
+                        if (!$token) {
+                            Notification::make()->title('Access Token belum diisi!')->danger()->send();
                             return;
                         }
 
-                        $authUrl = $composio->initiateOAuth($currentOffice, 'facebook');
+                        // Daftarkan webhook ke Meta
+                        $res = $meta->subscribePageWebhook($record->identifier, $token, $record->type);
 
-                        if ($authUrl) {
-                            return redirect()->away($authUrl);
-                        }
-
-                        Notification::make()
-                            ->title('Gagal Memulai Sesi Composio')
-                            ->danger()
-                            ->send();
-                    }),
-
-
-                // 📷 3. INSTAGRAM: ROW ACTION HUBUNGKAN VIA COMPOSIO
-                Action::make('connect_instagram_row')
-                    ->label(fn (Channel $record) => $record->status === 'connected' ? 'Hubungkan Ulang' : 'Hubungkan Instagram')
-                    ->icon('heroicon-m-camera')
-                    ->color('warning')
-                    ->visible(fn (Channel $record) => $record->type === 'instagram')
-                    ->action(function (Channel $record, ComposioService $composio) use ($currentOffice) {
-                        if (!$currentOffice->composio_account_id) {
-                            Notification::make()
-                                ->title('Akun Composio Belum Dipilih!')
-                                ->body('Silakan pilih Akun Composio pada pengaturan Kantor ini terlebih dahulu.')
-                                ->danger()
-                                ->send();
-                            return;
-                        }
-
-                        $authUrl = $composio->initiateOAuth($currentOffice, 'instagram');
-
-                        if ($authUrl) {
+                        if (!empty($res['success']) && $res['success'] === true) {
                             $record->update(['status' => 'connected']);
-                            return redirect()->away($authUrl);
+                            Notification::make()
+                                ->title("✅ Saluran {$record->name} Berhasil Terhubung!")
+                                ->body("Webhook Meta resmi aktif dan siap menerima pesan.")
+                                ->success()
+                                ->send();
+                        } else {
+                            $record->update(['status' => 'disconnected']);
+                            $errMsg = $res['error']['message'] ?? 'Gagal menghubungkan ke Meta';
+                            Notification::make()
+                                ->title('Gagal Terhubung ke Meta: ' . $errMsg)
+                                ->danger()
+                                ->send();
                         }
-
-                        Notification::make()
-                            ->title('Gagal Memulai Sesi Composio')
-                            ->body('Periksa kembali API Key dan konfigurasi Composio Anda.')
-                            ->danger()
-                            ->send();
                     }),
 
                 EditAction::make(),

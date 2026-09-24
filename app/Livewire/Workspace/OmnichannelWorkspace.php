@@ -320,45 +320,27 @@ class OmnichannelWorkspace extends Component
             }
         }
 
-        // B. JIKA FACEBOOK (Messenger DM / Komentar via Composio)
-        elseif (in_array($conv->channel_type, ['facebook', 'fb_dm', 'fb_comment'])) {
+        // B. JIKA FACEBOOK
+        elseif (in_array($conv->channel_type, ['facebook', 'fb_dm', 'fb_comment']) && !empty($accessToken)) {
             try {
-                $lastCustomerMsg = $conv->messages()->where('sender_type', 'customer')->latest('id')->first();
-                $isComment = $conv->channel_type === 'fb_comment' || str_starts_with($lastCustomerMsg?->message_body ?? '', '[Komentar');
-
-                if ($isComment && $lastCustomerMsg?->external_message_id) {
-                    // Balas Komentar Facebook
-                    $composio->replyFacebookComment($this->office, $lastCustomerMsg->external_message_id, $textToSend);
-                } else {
-                    // Kirim DM Facebook Messenger
-                    $recipientPsid = $conv->contact->fb_user_id ?: $conv->contact->identifier;
-                    if ($recipientPsid) {
-                        $composio->sendFacebookMessenger($this->office, $recipientPsid, $textToSend);
-                    }
+                $recipientPsid = $conv->contact->fb_user_id ?: $conv->contact->identifier;
+                if ($recipientPsid) {
+                    $meta->sendFacebookMessengerReply($accessToken, $recipientPsid, $textToSend, $mediaUrl, $messageType);
                 }
             } catch (\Exception $e) {
-                Log::error("[CS Reply FB Composio Error] " . $e->getMessage());
+                \Illuminate\Support\Facades\Log::error("[CS Reply FB Error] " . $e->getMessage());
             }
         }
 
-        // C. JIKA INSTAGRAM (Direct Message / Komentar via Composio)
-        elseif (in_array($conv->channel_type, ['instagram', 'ig_dm', 'ig_comment'])) {
+        // C. JIKA INSTAGRAM
+        elseif (in_array($conv->channel_type, ['instagram', 'ig_dm', 'ig_comment']) && !empty($accessToken)) {
             try {
-                $lastCustomerMsg = $conv->messages()->where('sender_type', 'customer')->latest('id')->first();
-                $isComment = $conv->channel_type === 'ig_comment' || str_starts_with($lastCustomerMsg?->message_body ?? '', '[Komentar');
-
-                if ($isComment && $lastCustomerMsg?->external_message_id) {
-                    // Balas Komentar Instagram
-                    $composio->replyInstagramComment($this->office, $lastCustomerMsg->external_message_id, $textToSend);
-                } else {
-                    // Kirim DM Instagram
-                    $recipientId = $conv->contact->ig_username ?: $conv->contact->fb_user_id ?: $conv->contact->identifier;
-                    if ($recipientId) {
-                        $composio->sendInstagramDm($this->office, $recipientId, $textToSend);
-                    }
+                $recipientIgid = $conv->contact->fb_user_id ?: $conv->contact->identifier;
+                if ($recipientIgid) {
+                    $meta->sendInstagramDmReply($accessToken, $recipientIgid, $textToSend, $mediaUrl, $messageType);
                 }
             } catch (\Exception $e) {
-                Log::error("[CS Reply IG Composio Error] " . $e->getMessage());
+                \Illuminate\Support\Facades\Log::error("[CS Reply IG Error] " . $e->getMessage());
             }
         }
     }

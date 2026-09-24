@@ -24,32 +24,32 @@ class ListChannels extends ListRecords
      /**
      * 🔥 DIEKSEKUSI OTOMATIS SAAT USER KEMBALI DARI OAUTH COMPOSIO
      */
-    public function mount(): void
-    {
-        parent::mount();
+    // public function mount(): void
+    // {
+    //     parent::mount();
 
-        $currentOffice = Filament::getTenant();
+    //     $currentOffice = Filament::getTenant();
 
-        if ($currentOffice && $currentOffice->composio_account_id) {
-            try {
-                $composio = app(ComposioService::class);
+    //     if ($currentOffice && $currentOffice->composio_account_id) {
+    //         try {
+    //             $composio = app(ComposioService::class);
 
-                // Auto-Sync Facebook & Instagram di latar belakang
-                $fbChannel = $composio->autoSyncOfficeChannel($currentOffice, 'facebook');
-                $igChannel = $composio->autoSyncOfficeChannel($currentOffice, 'instagram');
+    //             // Auto-Sync Facebook & Instagram di latar belakang
+    //             $fbChannel = $composio->autoSyncOfficeChannel($currentOffice, 'facebook');
+    //             $igChannel = $composio->autoSyncOfficeChannel($currentOffice, 'instagram');
 
-                // Jika baru saja berhasil terhubung, beri notifikasi sukses
-                if ($fbChannel && $fbChannel->wasChanged('status') && $fbChannel->status === 'connected') {
-                    Notification::make()
-                        ->title('✅ Facebook Berhasil Terhubung!')
-                        ->body("Halaman <b>{$fbChannel->name}</b> siap digunakan untuk AI Auto-Reply.")
-                        ->success()
-                        ->send();
-                }
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::error('AutoSync Error on ListChannels: ' . $e->getMessage());
-            }
-        }
-    }
+    //             // Jika baru saja berhasil terhubung, beri notifikasi sukses
+    //             if ($fbChannel && $fbChannel->wasChanged('status') && $fbChannel->status === 'connected') {
+    //                 Notification::make()
+    //                     ->title('✅ Facebook Berhasil Terhubung!')
+    //                     ->body("Halaman <b>{$fbChannel->name}</b> siap digunakan untuk AI Auto-Reply.")
+    //                     ->success()
+    //                     ->send();
+    //             }
+    //         } catch (\Throwable $e) {
+    //             \Illuminate\Support\Facades\Log::error('AutoSync Error on ListChannels: ' . $e->getMessage());
+    //         }
+    //     }
+    // }
     
 }

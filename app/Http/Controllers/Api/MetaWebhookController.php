@@ -7,8 +7,8 @@ use App\Models\Channel;
 use App\Models\Contact;
 use App\Models\Conversation;
 use App\Models\Message;
-use App\Services\ComposioService;
 use App\Services\GeminiAiService;
+use App\Services\MetaGraphService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -18,6 +18,9 @@ use Illuminate\Support\Str;
 
 class MetaWebhookController extends Controller
 {
+    /**
+     * 1. Handshake Verifikasi Webhook Meta (GET)
+     */
     public function verify(Request $request)
     {
         $mode = $request->query('hub_mode');
@@ -34,41 +37,9 @@ class MetaWebhookController extends Controller
     }
 
     /**
-     * Helper Cerdas: Menemukan Channel Kantor yang Tepat Berdasarkan Page ID
+     * 2. Penangkap Event DM & Komentar FB / IG (POST) ➡️ Dibalas Langsung oleh MetaGraphService
      */
-    protected function resolveChannel(string $pageId, string $object): ?Channel
-    {
-        $platformType = $object === 'instagram' ? 'instagram' : 'facebook';
-
-        // 1. Prioritas Utama: Cari channel yang Page ID-nya cocok persis
-        $channel = Channel::with('office.composioAccount')
-            ->where('type', $platformType)
-            ->where('identifier', $pageId)
-            ->first();
-
-        if ($channel) {
-            return $channel;
-        }
-
-        // 2. Jika belum ada yang cocok, cari Channel di Kantor yang memiliki Akun Composio Aktif
-        $channel = Channel::with('office.composioAccount')
-            ->where('type', $platformType)
-            ->whereHas('office', function ($q) {
-                $q->whereNotNull('composio_account_id');
-            })
-            ->first();
-
-        // Kunci Page ID ini ke channel kantor aktif tersebut
-        if ($channel) {
-            $channel->update(['identifier' => $pageId]);
-            Log::info("🔗 [Auto-Bind Page ID] Page ID {$pageId} berhasil dikaitkan ke Kantor: {$channel->office->name}");
-            return $channel;
-        }
-
-        return null;
-    }
-
-    public function handle(Request $request, ComposioService $composio, GeminiAiService $gemini)
+    public function handle(Request $request, MetaGraphService $meta, GeminiAiService $gemini)
     {
         $body = $request->all();
         Log::info("=== [META INBOUND EVENT] ===");
@@ -80,16 +51,18 @@ class MetaWebhookController extends Controller
             foreach ($body['entry'] as $entry) {
                 $pageId = (string) ($entry['id'] ?? '');
 
-                // 🔥 RESOLVE CHANNEL DENGAN AMAN & TEPAT SASARAN
-                $channel = $this->resolveChannel($pageId, $object);
+                // Cari Channel Kantor di database berdasarkan Identifier Page ID
+                $channel = Channel::where('identifier', $pageId)->first();
+                if (!$channel || !$channel->is_bot_enabled) continue;
 
-                if (!$channel || !$channel->office) {
-                    Log::warning("⚠️ Channel tidak ditemukan untuk Page ID: {$pageId}");
+                $credentials = $channel->credentials ?? [];
+                $accessToken = $credentials['access_token'] ?? null;
+                $officeId = $channel->office_id;
+
+                if (!$accessToken) {
+                    Log::warning("⚠️ Channel [{$channel->name}] belum memiliki access_token di credentials.");
                     continue;
                 }
-
-                $office = $channel->office;
-                $officeId = $office->id;
 
                 // =============================================================
                 // A. EVENT: PESAN DM (MESSENGER & INSTAGRAM DM)
@@ -106,6 +79,7 @@ class MetaWebhookController extends Controller
                         $mediaUrl = null;
                         $messageType = 'text';
 
+                        // 🛡️ DOWNLOAD MEDIA JIKA ADA
                         if (!empty($attachments)) {
                             $firstAttachment = $attachments[0];
                             $attachType = $firstAttachment['type'] ?? 'image';
@@ -148,32 +122,12 @@ class MetaWebhookController extends Controller
                             Cache::put($lockKey, true, now()->addMinutes(10));
                         }
 
-                        // =============================================================
-                        // 🔥 KHUSUS INSTAGRAM: DETEKSI REAL PSID & LOG TRANSPARAN
-                        // =============================================================
-                        $realPsid = $senderId;
-                        $replyMid = $messageId;
-                        $contactName = ($object === 'instagram' ? 'IG User ' : 'FB User ') . substr($senderId, -4);
-
-                        if ($object === 'instagram') {
-                            $igSenderData = $composio->getLatestInstagramSender($office);
-                            if ($igSenderData && !empty($igSenderData['psid'])) {
-                                $realPsid = $igSenderData['psid'];
-                                $replyMid = $igSenderData['mid'] ?? $messageId;
-                                $contactName = '@' . ($igSenderData['sender_username'] ?? substr($realPsid, -4));
-                            }
-                        }
-
                         $channelType = $object === 'instagram' ? 'ig_dm' : 'fb_dm';
 
                         // 1. Kontak
                         $contact = Contact::firstOrCreate(
-                            ['office_id' => $officeId, 'fb_user_id' => $realPsid],
-                            [
-                                'name' => $contactName,
-                                'ig_username' => $object === 'instagram' ? str_replace('@', '', $contactName) : null,
-                                'pipeline_stage' => 'lead'
-                            ]
+                            ['office_id' => $officeId, 'fb_user_id' => $senderId],
+                            ['name' => ($object === 'instagram' ? 'IG User ' : 'FB User ') . substr($senderId, -4), 'pipeline_stage' => 'lead']
                         );
 
                         // 2. Percakapan
@@ -199,7 +153,7 @@ class MetaWebhookController extends Controller
                             'unread_count'    => $conversation->unread_count + 1
                         ]);
 
-                        // 4. BALAS OTOMATIS OLEH AI GEMINI ➡️ DIKIRIMKAN VIA COMPOSIO
+                        // 4. BALAS OTOMATIS OLEH AI GEMINI VIA METAGRAPHSERVICE
                         if ($conversation->is_bot_active) {
                             $localImagePath = null;
                             if ($messageType === 'image' && $mediaUrl) {
@@ -211,13 +165,10 @@ class MetaWebhookController extends Controller
 
                             if ($botReply) {
                                 if ($object === 'instagram') {
-                                    // 🔥 Kirim langsung dengan PSID valid tanpa parameter MID
-                                    $sendRes = $composio->sendInstagramDm($office, $realPsid, $botReply);
+                                    $meta->sendInstagramDmReply($accessToken, $senderId, $botReply);
                                 } else {
-                                    $sendRes = $composio->sendFacebookMessenger($office, $senderId, $botReply, $pageId);
+                                    $meta->sendFacebookMessengerReply($accessToken, $senderId, $botReply);
                                 }
-
-                                Log::info("🚀 [Composio DM Send Response via {$office->slug}]:", $sendRes);
 
                                 Message::create([
                                     'conversation_id' => $conversation->id,
@@ -246,10 +197,10 @@ class MetaWebhookController extends Controller
                         $postTypes = ['status', 'photo', 'video', 'post', 'share'];
                         if ($object === 'page' && $field === 'feed' && in_array($val['item'] ?? '', $postTypes) && ($val['verb'] ?? '') === 'add') {
                             $postId = $val['post_id'] ?? $val['id'] ?? null;
-                            $firstCommentText = $channel->credentials['auto_first_comment'] ?? null;
+                            $firstCommentText = $credentials['auto_first_comment'] ?? null;
 
                             if ($postId && $firstCommentText) {
-                                $composio->replyFacebookComment($office, (string)$postId, $firstCommentText);
+                                $meta->postFirstComment($accessToken, (string)$postId, $firstCommentText);
                             }
                         }
 
@@ -279,7 +230,7 @@ class MetaWebhookController extends Controller
                                     'conversation_id'     => $conversation->id,
                                     'office_id'           => $officeId,
                                     'sender_type'         => 'customer',
-                                    'message_type'        => $messageType ?? 'text',
+                                    'message_type'        => 'text',
                                     'message_body'        => $commentText,
                                     'external_message_id' => $commentId,
                                     'is_read'             => false,
@@ -292,7 +243,7 @@ class MetaWebhookController extends Controller
 
                                 $aiReply = $gemini->generateReply($conversation);
                                 if ($aiReply) {
-                                    $composio->replyFacebookComment($office, $commentId, $aiReply);
+                                    $meta->replyToFacebookComment($accessToken, $commentId, $aiReply);
 
                                     Message::create([
                                         'conversation_id' => $conversation->id,
@@ -345,7 +296,7 @@ class MetaWebhookController extends Controller
 
                                 $aiReply = $gemini->generateReply($conversation);
                                 if ($aiReply) {
-                                    $composio->replyInstagramComment($office, $commentId, $aiReply);
+                                    $meta->replyToInstagramComment($accessToken, $commentId, $aiReply);
 
                                     Message::create([
                                         'conversation_id' => $conversation->id,
