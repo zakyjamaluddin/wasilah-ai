@@ -119,54 +119,96 @@ class MetaGraphService
     /**
      * Daftarkan Webhook Halaman Facebook atau Verifikasi Akun Instagram Bisnis
      */
+    // public function subscribePageWebhook(string $identifier, string $pageAccessToken, string $type = 'facebook'): array
+    // {
+    //     try {
+    //         // A. JIKA INSTAGRAM: Verifikasi Keaktifan Akun & Token Instagram
+    //         if ($type === 'instagram') {
+    //             $response = Http::timeout(15)->get("https://graph.facebook.com/v21.0/{$identifier}", [
+    //                 'fields'       => 'id,name,username,profile_picture_url',
+    //                 'access_token' => $pageAccessToken,
+    //             ]);
+
+    //             $data = $response->json();
+
+    //             if ($response->successful() && !empty($data['id'])) {
+    //                 Log::info("✅ [Meta IG Verified] Akun IG: @" . ($data['username'] ?? $data['name'] ?? $identifier) . " ({$identifier}) Valid!");
+    //                 return [
+    //                     'success' => true,
+    //                     'data'    => $data,
+    //                 ];
+    //             }
+
+    //             Log::error("❌ [Meta IG Verification Failed] ID: {$identifier}", $data);
+    //             return [
+    //                 'success' => false,
+    //                 'error'   => $data['error'] ?? ['message' => 'Token Instagram tidak valid atau ID akun salah.'],
+    //             ];
+    //         }
+
+    //         // B. JIKA FACEBOOK: Tembak Subscribed Apps ke Meta Graph API
+    //         $endpoint = "https://graph.facebook.com/v21.0/{$identifier}/subscribed_apps";
+    //         $response = Http::timeout(15)->post($endpoint, [
+    //             'subscribed_fields' => 'messages,messaging_postbacks,feed,message_deliveries,message_reads,message_echoes',
+    //             'access_token'      => $pageAccessToken,
+    //         ]);
+
+    //         $data = $response->json();
+
+    //         if ($response->successful() && ($data['success'] ?? false)) {
+    //             Log::info("✅ [Meta FB Subscribed] Halaman ID: {$identifier} Sukses!");
+    //             return [
+    //                 'success' => true,
+    //                 'data'    => $data,
+    //             ];
+    //         }
+
+    //         Log::error("❌ [Meta FB Subscribe Failed] Halaman ID: {$identifier}", $data);
+    //         return [
+    //             'success' => false,
+    //             'error'   => $data['error'] ?? ['message' => 'Gagal mendaftarkan webhook Halaman Facebook.'],
+    //         ];
+    //     } catch (\Throwable $e) {
+    //         Log::error("Exception subscribePageWebhook: " . $e->getMessage());
+    //         return [
+    //             'success' => false,
+    //             'error'   => ['message' => $e->getMessage()],
+    //         ];
+    //     }
+    // }
+
+    /**
+     * Daftarkan Webhook Resmi ke Meta Graph API (Mendukung Facebook & Instagram)
+     */
     public function subscribePageWebhook(string $identifier, string $pageAccessToken, string $type = 'facebook'): array
     {
         try {
-            // A. JIKA INSTAGRAM: Verifikasi Keaktifan Akun & Token Instagram
-            if ($type === 'instagram') {
-                $response = Http::timeout(15)->get("https://graph.facebook.com/v21.0/{$identifier}", [
-                    'fields'       => 'id,name,username,profile_picture_url',
-                    'access_token' => $pageAccessToken,
-                ]);
-
-                $data = $response->json();
-
-                if ($response->successful() && !empty($data['id'])) {
-                    Log::info("✅ [Meta IG Verified] Akun IG: @" . ($data['username'] ?? $data['name'] ?? $identifier) . " ({$identifier}) Valid!");
-                    return [
-                        'success' => true,
-                        'data'    => $data,
-                    ];
-                }
-
-                Log::error("❌ [Meta IG Verification Failed] ID: {$identifier}", $data);
-                return [
-                    'success' => false,
-                    'error'   => $data['error'] ?? ['message' => 'Token Instagram tidak valid atau ID akun salah.'],
-                ];
-            }
-
-            // B. JIKA FACEBOOK: Tembak Subscribed Apps ke Meta Graph API
             $endpoint = "https://graph.facebook.com/v21.0/{$identifier}/subscribed_apps";
+
+            // 🔥 KUNCI PERBAIKAN: FIELD KHUSUS INSTAGRAM VS FACEBOOK
+            $fields = ($type === 'instagram')
+                ? 'messages,messaging_postbacks,comments,message_reactions,messaging_seen'
+                : 'messages,messaging_postbacks,feed,message_deliveries,message_reads,message_echoes';
+
             $response = Http::timeout(15)->post($endpoint, [
-                'subscribed_fields' => 'messages,messaging_postbacks,feed,message_deliveries,message_reads,message_echoes',
+                'subscribed_fields' => $fields,
                 'access_token'      => $pageAccessToken,
             ]);
 
             $data = $response->json();
 
             if ($response->successful() && ($data['success'] ?? false)) {
-                Log::info("✅ [Meta FB Subscribed] Halaman ID: {$identifier} Sukses!");
+                Log::info("✅ [Meta " . strtoupper($type) . " Subscribed] ID: {$identifier} Sukses!");
                 return [
                     'success' => true,
                     'data'    => $data,
                 ];
             }
 
-            Log::error("❌ [Meta FB Subscribe Failed] Halaman ID: {$identifier}", $data);
+            Log::error("❌ [Meta " . strtoupper($type) . " Subscribe Failed] ID: {$identifier}", $data);
             return [
                 'success' => false,
-                'error'   => $data['error'] ?? ['message' => 'Gagal mendaftarkan webhook Halaman Facebook.'],
+                'error'   => $data['error'] ?? ['message' => 'Gagal mendaftarkan webhook ke Meta.'],
             ];
         } catch (\Throwable $e) {
             Log::error("Exception subscribePageWebhook: " . $e->getMessage());
