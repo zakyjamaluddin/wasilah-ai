@@ -150,10 +150,7 @@ class ComposioService
      * 3. BACKGROUND AUTO-SYNC: Menarik Sesi Aktif KHUSUS Kantor Ini & Mengunci Page ID
      */
     /**
-     * 3. BACKGROUND AUTO-SYNC DENGAN DUKUNGAN MULTI-PAGE FACEBOOK (Anti Tertimpa)
-     */
-    /**
-     * 3. BACKGROUND AUTO-SYNC DENGAN ISOLASI KETAT & PERBAIKAN STATUS INSTAN
+     * 3. BACKGROUND AUTO-SYNC DENGAN FITUR AUTO-SUBSCRIBE WEBHOOK OTOMATIS
      */
     public function autoSyncOfficeChannel(Office $office, string $platform = 'facebook'): ?Channel
     {
@@ -169,7 +166,6 @@ class ComposioService
             $items = $res->json('items') ?? $res->json('data') ?? [];
             if (empty($items)) return null;
 
-            // Cari koneksi yang statusnya ACTIVE
             $matchedAccount = null;
             foreach ($items as $item) {
                 $slug = strtolower($item['toolkit']['slug'] ?? $item['appName'] ?? '');
@@ -183,29 +179,21 @@ class ComposioService
 
             if (!$matchedAccount) return null;
 
-            $connectionId = $matchedAccount['id']; // ca_xxxx milik kantor ini
+            $connectionId = $matchedAccount['id'];
 
-            // 2. Cari Channel yang ada di database atau buatkan jika belum ada
-            $channel = Channel::where('office_id', $office->id)->where('type', $platform)->first();
+            // 2. Ambil atau buat Channel di database
+            $channel = Channel::firstOrCreate(
+                ['office_id' => $office->id, 'type' => $platform],
+                ['name' => strtoupper($platform) . ': ' . $office->name, 'is_bot_enabled' => true]
+            );
 
-            if (!$channel) {
-                $channel = Channel::create([
-                    'office_id'      => $office->id,
-                    'type'           => $platform,
-                    'name'           => strtoupper($platform) . ': ' . $office->name,
-                    'is_bot_enabled' => true,
-                    'status'         => 'connected',
-                ]);
-            }
-
-            // Kunci ID Koneksi Composio & ubah status menjadi CONNECTED
             $channel->update([
                 'composio_entity_id'     => $userId,
                 'composio_connection_id' => $connectionId,
                 'status'                 => 'connected',
             ]);
 
-            // 3. JIKA FACEBOOK: TARIK DAFTAR HALAMAN & KUNCI PAGE ID
+            // 3. JIKA FACEBOOK: TARIK HALAMAN & AUTO-SUBSCRIBE WEBHOOK SECARA OTOMATIS
             if ($platform === 'facebook') {
                 $pagesRes = $this->executeAction($office, 'FACEBOOK_LIST_MANAGED_PAGES', [], $connectionId);
                 $pagesData = $pagesRes['data']['data'] ?? $pagesRes['data']['response_data'] ?? [];
@@ -214,7 +202,7 @@ class ComposioService
                 if (!empty($pages)) {
                     $selectedPage = null;
 
-                    // Prioritas 1: Jika sudah ada Page ID manual di database, pertahankan
+                    // Prioritas 1: Jika sudah ada Page ID manual di database
                     if (!empty($channel->identifier)) {
                         foreach ($pages as $p) {
                             if ((string)($p['id'] ?? '') === (string)$channel->identifier) {
@@ -236,25 +224,40 @@ class ComposioService
                         }
                     }
 
-                    // Prioritas 3: Ambil halaman pertama yang tersedia
+                    // Prioritas 3: Fallback ke halaman pertama
                     if (!$selectedPage) {
                         $selectedPage = $pages[0];
                     }
 
-                    $pageId = $selectedPage['id'] ?? null;
+                    $pageId = (string) ($selectedPage['id'] ?? '');
                     $pageName = $selectedPage['name'] ?? null;
+                    $pageAccessToken = $selectedPage['access_token'] ?? null;
 
                     if ($pageId) {
                         $channel->update([
-                            'identifier' => (string) $pageId,
+                            'identifier' => $pageId,
                             'name'       => $pageName ? "FB: {$pageName}" : $channel->name,
                             'status'     => 'connected',
                         ]);
+
+                        // 🔥 AUTO-SUBSCRIBE WEBHOOK KE META SECARA OTOMATIS DI LATAR BELAKANG
+                        if ($pageAccessToken) {
+                            try {
+                                $subRes = Http::timeout(10)->post("https://graph.facebook.com/v21.0/{$pageId}/subscribed_apps", [
+                                    'subscribed_fields' => 'messages,messaging_postbacks,feed,message_deliveries,message_reads',
+                                    'access_token'      => $pageAccessToken,
+                                ]);
+
+                                Log::info("📡 [Meta Webhook Auto-Subscribed] Halaman: {$pageName} ({$pageId}) -> Respon: " . $subRes->body());
+                            } catch (\Throwable $e) {
+                                Log::error("Gagal auto-subscribe webhook halaman {$pageId}: " . $e->getMessage());
+                            }
+                        }
                     }
                 }
             }
 
-            Log::info("✅ [Auto-Sync Sukses] Channel: {$channel->name} (ID: {$channel->identifier}) status -> CONNECTED");
+            Log::info("✅ [Auto-Sync & Webhook Ready] Channel: {$channel->name} (ID: {$channel->identifier})");
             return $channel;
         } catch (\Throwable $e) {
             Log::error("Exception autoSyncOfficeChannel: " . $e->getMessage());

@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Services\PaymentGatewayService;
 use Illuminate\Support\Facades\Route;
 use App\Models\Office;
+use App\Services\ComposioService;
 
 Route::get('/', function () {
     return view('landing');
@@ -121,29 +122,25 @@ Route::get('/test-instagram', function () {
     ]);
 });
 
-Route::get('/debug-composio', function () {
-    $offices = Office::with(['channels' => function($q) {
-        $q->where('type', 'facebook');
-    }])->get();
 
-    $report = [];
-    foreach ($offices as $off) {
-        $fbChannel = $off->channels->first();
-        $report[] = [
-            'office_id' => $off->id,
-            'office_name' => $off->name,
-            'office_slug' => $off->slug,
-            'channel_found' => $fbChannel ? true : false,
-            'channel_name' => $fbChannel?->name,
-            'page_id_identifier' => $fbChannel?->identifier,
-            'connection_id' => $fbChannel?->composio_connection_id,
-            'status' => $fbChannel?->status,
-            'is_bot_enabled' => $fbChannel?->is_bot_enabled,
+Route::get('/debug-composio', function (ComposioService $composio) {
+    $offices = Office::whereNotNull('composio_account_id')->get();
+    $results = [];
+
+    foreach ($offices as $office) {
+        $fbChannel = $composio->autoSyncOfficeChannel($office, 'facebook');
+        $results[] = [
+            'office_id'   => $office->id,
+            'office_name' => $office->name,
+            'channel'     => $fbChannel?->name,
+            'page_id'     => $fbChannel?->identifier,
+            'status'      => $fbChannel?->status,
         ];
     }
 
     return response()->json([
-        'total_offices' => count($report),
-        'channels_status' => $report,
+        'message' => 'Seluruh Halaman Facebook di semua kantor berhasil di-subscribe ke Meta Webhook secara otomatis!',
+        'synced_channels' => $results,
     ], 200, [], JSON_PRETTY_PRINT);
 });
+
