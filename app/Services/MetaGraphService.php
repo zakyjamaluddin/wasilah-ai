@@ -116,31 +116,64 @@ class MetaGraphService
     /**
      * Daftarkan & Verifikasi Webhook Otomatis (Membedakan Facebook Page vs Instagram)
      */
+    /**
+     * Daftarkan Webhook Halaman Facebook atau Verifikasi Akun Instagram Bisnis
+     */
     public function subscribePageWebhook(string $identifier, string $pageAccessToken, string $type = 'facebook'): array
     {
         try {
-            // 🎯 A. JIKA INSTAGRAM: Verifikasi Akses Akun Instagram Langsung
+            // A. JIKA INSTAGRAM: Verifikasi Keaktifan Akun & Token Instagram
             if ($type === 'instagram') {
-                $response = Http::get("{$this->graphUrl}/{$identifier}", [
-                    'fields' => 'id,username',
+                $response = Http::timeout(15)->get("https://graph.facebook.com/v21.0/{$identifier}", [
+                    'fields'       => 'id,name,username,profile_picture_url',
                     'access_token' => $pageAccessToken,
                 ]);
 
-                if ($response->successful() && !empty($response->json('id'))) {
-                    return ['success' => true];
+                $data = $response->json();
+
+                if ($response->successful() && !empty($data['id'])) {
+                    Log::info("✅ [Meta IG Verified] Akun IG: @" . ($data['username'] ?? $data['name'] ?? $identifier) . " ({$identifier}) Valid!");
+                    return [
+                        'success' => true,
+                        'data'    => $data,
+                    ];
                 }
-                return $response->json() ?? ['error' => ['message' => 'Gagal verifikasi akun Instagram']];
+
+                Log::error("❌ [Meta IG Verification Failed] ID: {$identifier}", $data);
+                return [
+                    'success' => false,
+                    'error'   => $data['error'] ?? ['message' => 'Token Instagram tidak valid atau ID akun salah.'],
+                ];
             }
 
-            // 🎯 B. JIKA FACEBOOK PAGE: Daftarkan subscribed_apps
-            $response = Http::post("{$this->graphUrl}/{$identifier}/subscribed_apps", [
-                'subscribed_fields' => 'feed,messages',
-                'access_token' => $pageAccessToken,
+            // B. JIKA FACEBOOK: Tembak Subscribed Apps ke Meta Graph API
+            $endpoint = "https://graph.facebook.com/v21.0/{$identifier}/subscribed_apps";
+            $response = Http::timeout(15)->post($endpoint, [
+                'subscribed_fields' => 'messages,messaging_postbacks,feed,message_deliveries,message_reads,message_echoes',
+                'access_token'      => $pageAccessToken,
             ]);
-            return $response->json() ?? [];
-        } catch (\Exception $e) {
-            Log::error("[Meta Webhook Subscribe Exception] " . $e->getMessage());
-            return ['error' => ['message' => $e->getMessage()]];
+
+            $data = $response->json();
+
+            if ($response->successful() && ($data['success'] ?? false)) {
+                Log::info("✅ [Meta FB Subscribed] Halaman ID: {$identifier} Sukses!");
+                return [
+                    'success' => true,
+                    'data'    => $data,
+                ];
+            }
+
+            Log::error("❌ [Meta FB Subscribe Failed] Halaman ID: {$identifier}", $data);
+            return [
+                'success' => false,
+                'error'   => $data['error'] ?? ['message' => 'Gagal mendaftarkan webhook Halaman Facebook.'],
+            ];
+        } catch (\Throwable $e) {
+            Log::error("Exception subscribePageWebhook: " . $e->getMessage());
+            return [
+                'success' => false,
+                'error'   => ['message' => $e->getMessage()],
+            ];
         }
     }
 
