@@ -4,11 +4,12 @@ use App\Http\Controllers\Auth\FacebookOAuthController;
 use App\Http\Controllers\CheckoutController;
 use App\Livewire\Workspace\OmnichannelWorkspace;
 use App\Models\Channel;
-use App\Models\Order;
-use App\Services\PaymentGatewayService;
-use Illuminate\Support\Facades\Route;
 use App\Models\Office;
+use App\Models\Order;
 use App\Services\ComposioService;
+use App\Services\PaymentGatewayService;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('landing');
@@ -36,111 +37,64 @@ Route::get('/checkout', [CheckoutController::class, 'show'])->name('checkout.sho
 Route::post('/checkout/process', [CheckoutController::class, 'process'])->name('checkout.process');
 Route::get('/checkout/invoice/{invoice}', [CheckoutController::class, 'invoice'])->name('checkout.invoice');
 Route::post('/checkout/pay/{invoice}', [CheckoutController::class, 'pay'])->name('checkout.pay');
-
-// 🔍 RUTE DIAGNOSA DUITKU LANGSUNG DI BROWSER
-Route::get('/test-duitku', function (PaymentGatewayService $gateway) {
-    $order = Order::latest()->first();
-    if (!$order) {
-        return 'Belum ada data Order di database. Silakan isi form checkout terlebih dahulu.';
-    }
-
-    $merchantCode = config('services.duitku.merchant_code') ?: env('DUITKU_MERCHANT_CODE', '');
-    $apiKey = config('services.duitku.api_key') ?: env('DUITKU_API_KEY', '');
-    $apiUrl = config('services.duitku.api_url');
-
-    $amount = (int) $order->amount;
-    $orderId = $order->invoice_number;
-    $signature = md5($merchantCode . $orderId . $amount . $apiKey);
-
-    $payload = [
-        'merchantCode'     => $merchantCode,
-        'paymentAmount'    => $amount,
-        'merchantOrderId'  => $orderId,
-        'productDetails'   => "Paket Wasilah AI: " . $order->plan_name,
-        'email'            => $order->customer_email,
-        'customerVaName'   => $order->customer_name,
-        'callbackUrl'      => url('/api/payment/webhook'),
-        'returnUrl'        => route('checkout.invoice', ['invoice' => $order->invoice_number]),
-        'signature'        => $signature,
-        'expiryPeriod'     => 1440,
-    ];
-
-    $response = Illuminate\Support\Facades\Http::withHeaders([
-        'Content-Type' => 'application/json',
-        'Accept'       => 'application/json',
-    ])->timeout(20)->post($apiUrl, $payload);
-
-    return response()->json([
-        'URL_DITARGET'    => $apiUrl,
-        'MERCHANT_CODE'   => $merchantCode,
-        'SIGNATURE_MD5'   => $signature,
-        'HTTP_STATUS'     => $response->status(),
-        'RESPON_DARI_DUITKU' => $response->json() ?? $response->body(),
-    ]);
-});
-
-
-Route::get('/test-instagram', function () {
-    // 1. Ambil Channel Instagram di Database
-    $channel = Channel::where('type', 'instagram')->latest()->first();
-
-    if (!$channel) {
-        return response()->json(['error' => 'Belum ada Channel bertipe Instagram di database!'], 404);
-    }
-
-    $token = $channel->credentials['access_token'] ?? '';
-    $savedIgId = $channel->identifier;
-
-    // 2. Ambil Channel Facebook pasangannya untuk mencari ID Instagram Bisnis yang Asli
-    $fbChannel = Channel::where('type', 'facebook')->latest()->first();
-    $pageId = $fbChannel ? $fbChannel->identifier : null;
-
-    $realIgData = null;
-    if ($pageId && $token) {
-        $realIgData = Illuminate\Support\Facades\Http::get("https://graph.facebook.com/v19.0/{$pageId}?fields=instagram_business_account,name&access_token={$token}")->json();
-    }
-
-    // 3. Cek Izin Token Instagram di Server Meta
-    $permissionsRes = Illuminate\Support\Facades\Http::get("https://graph.facebook.com/v19.0/me/permissions?access_token={$token}")->json();
-    $grantedPermissions = collect($permissionsRes['data'] ?? [])->where('status', 'granted')->pluck('permission')->toArray();
-
-    // 4. Cek apakah ID di Database sudah cocok dengan ID Asli Instagram
-    $actualIgId = $realIgData['instagram_business_account']['id'] ?? 'TIDAK_DITEMUKAN';
-    $isIdMatched = ($savedIgId === $actualIgId);
-
-    return response()->json([
-        '1_STATUS_BOT_DI_DB'         => $channel->is_bot_enabled ? 'AKTIF (ON)' : 'MATI (OFF)',
-        '2_ID_INSTAGRAM_DI_DATABASE' => $savedIgId,
-        '3_ID_INSTAGRAM_ASLI_META'   => $actualIgId,
-        '4_APAKAH_ID_COCOK'          => $isIdMatched ? '✅ COCOK (SIAP TERIMA PESAN)' : '❌ BEDA / SALAH ID (Penyebab Pesan Tidak Dibalas)',
-        '5_IZIN_TOKEN_INSTAGRAM'     => [
-            'instagram_basic'            => in_array('instagram_basic', $grantedPermissions) ? '✅ ADA' : '❌ KURANG',
-            'instagram_manage_messages' => in_array('instagram_manage_messages', $grantedPermissions) ? '✅ ADA' : '❌ KURANG',
-            'instagram_manage_comments' => in_array('instagram_manage_comments', $grantedPermissions) ? '✅ ADA' : '❌ KURANG',
-        ],
-        '6_DETAIL_AKUN_META'         => $realIgData,
-    ]);
-});
-
-
 Route::get('/debug-composio', function (ComposioService $composio) {
-    $offices = Office::whereNotNull('composio_account_id')->get();
-    $results = [];
+    // 1. Cari Kantor Mutamtour Babat
+    $office = Office::where('slug', 'like', '%babat%')->orWhere('name', 'like', '%babat%')->first();
 
-    foreach ($offices as $office) {
-        $fbChannel = $composio->autoSyncOfficeChannel($office, 'facebook');
-        $results[] = [
-            'office_id'   => $office->id,
-            'office_name' => $office->name,
-            'channel'     => $fbChannel?->name,
-            'page_id'     => $fbChannel?->identifier,
-            'status'      => $fbChannel?->status,
+    if (!$office) {
+        $office = Office::latest('id')->first();
+    }
+
+    $channel = Channel::where('office_id', $office->id)->where('type', 'facebook')->first();
+    $connectionId = $channel?->composio_connection_id;
+    $pageId = $channel?->identifier;
+
+    // 2. Tarik Data Halaman & Token dari Composio
+    $pagesRes = $composio->executeAction($office, 'FACEBOOK_LIST_MANAGED_PAGES', [], $connectionId);
+    $pagesData = $pagesRes['data']['data'] ?? $pagesRes['data']['response_data'] ?? [];
+    $pages = isset($pagesData['data']) && is_array($pagesData['data']) ? $pagesData['data'] : (is_array($pagesData) ? $pagesData : []);
+
+    $targetPage = null;
+    foreach ($pages as $p) {
+        if ((string)$p['id'] === (string)$pageId) {
+            $targetPage = $p;
+            break;
+        }
+    }
+
+    $pageAccessToken = $targetPage['access_token'] ?? null;
+
+    $metaCheck = [];
+    if ($pageId && $pageAccessToken) {
+        // A. Cek detail info Halaman dari Meta
+        $pageInfo = Http::get("https://graph.facebook.com/v21.0/{$pageId}", [
+            'fields'       => 'id,name,is_published,can_post,tasks',
+            'access_token' => $pageAccessToken,
+        ])->json();
+
+        // B. Cek daftar aplikasi yang me-langgan (Subscribed Apps) di Halaman ini
+        $subscribedApps = Http::get("https://graph.facebook.com/v21.0/{$pageId}/subscribed_apps", [
+            'access_token' => $pageAccessToken,
+        ])->json();
+
+        // C. Paksa subscribe ulang dengan SEMUA field lengkap
+        $forceSubscribe = Http::post("https://graph.facebook.com/v21.0/{$pageId}/subscribed_apps", [
+            'subscribed_fields' => 'messages,messaging_postbacks,message_reads,message_deliveries,message_echoes,feed',
+            'access_token'      => $pageAccessToken,
+        ])->json();
+
+        $metaCheck = [
+            'page_info_from_meta'       => $pageInfo,
+            'current_subscribed_apps'   => $subscribedApps,
+            'force_re_subscribe_result' => $forceSubscribe,
         ];
     }
 
     return response()->json([
-        'message' => 'Seluruh Halaman Facebook di semua kantor berhasil di-subscribe ke Meta Webhook secara otomatis!',
-        'synced_channels' => $results,
+        'office_name'       => $office->name,
+        'page_id'           => $pageId,
+        'channel_name'      => $channel?->name,
+        'has_access_token'  => !empty($pageAccessToken),
+        'meta_graph_report' => $metaCheck,
     ], 200, [], JSON_PRETTY_PRINT);
 });
-
