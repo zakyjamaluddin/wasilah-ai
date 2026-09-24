@@ -152,6 +152,9 @@ class ComposioService
     /**
      * 3. BACKGROUND AUTO-SYNC DENGAN DUKUNGAN MULTI-PAGE FACEBOOK (Anti Tertimpa)
      */
+    /**
+     * 3. BACKGROUND AUTO-SYNC DENGAN ISOLASI KETAT & PERBAIKAN STATUS INSTAN
+     */
     public function autoSyncOfficeChannel(Office $office, string $platform = 'facebook'): ?Channel
     {
         try {
@@ -166,12 +169,13 @@ class ComposioService
             $items = $res->json('items') ?? $res->json('data') ?? [];
             if (empty($items)) return null;
 
-            // Cari sesi yang aktif
+            // Cari koneksi yang statusnya ACTIVE
             $matchedAccount = null;
             foreach ($items as $item) {
-                $slug = $item['toolkit']['slug'] ?? $item['appName'] ?? '';
-                $status = strtoupper($item['status'] ?? '');
-                if (strtolower($slug) === $toolkitSlug && $status === 'ACTIVE') {
+                $slug = strtolower($item['toolkit']['slug'] ?? $item['appName'] ?? '');
+                $status = strtoupper($item['status'] ?? $item['data']['status'] ?? '');
+                
+                if ($slug === $toolkitSlug && in_array($status, ['ACTIVE', 'CONNECTED', 'SUCCESS'])) {
                     $matchedAccount = $item;
                     break;
                 }
@@ -181,20 +185,27 @@ class ComposioService
 
             $connectionId = $matchedAccount['id']; // ca_xxxx milik kantor ini
 
-            // 2. Ambil Channel di database
-            $channel = Channel::firstOrCreate(
-                ['office_id' => $office->id, 'type' => $platform],
-                ['name' => strtoupper($platform) . ': ' . $office->name, 'is_bot_enabled' => true]
-            );
+            // 2. Cari Channel yang ada di database atau buatkan jika belum ada
+            $channel = Channel::where('office_id', $office->id)->where('type', $platform)->first();
 
-            // Kunci ID Koneksi Composio ke channel kantor ini
+            if (!$channel) {
+                $channel = Channel::create([
+                    'office_id'      => $office->id,
+                    'type'           => $platform,
+                    'name'           => strtoupper($platform) . ': ' . $office->name,
+                    'is_bot_enabled' => true,
+                    'status'         => 'connected',
+                ]);
+            }
+
+            // Kunci ID Koneksi Composio & ubah status menjadi CONNECTED
             $channel->update([
                 'composio_entity_id'     => $userId,
                 'composio_connection_id' => $connectionId,
                 'status'                 => 'connected',
             ]);
 
-            // 3. JIKA FACEBOOK: TARIK SELURUH HALAMAN & COCOKKAN SECARA PINTAR
+            // 3. JIKA FACEBOOK: TARIK DAFTAR HALAMAN & KUNCI PAGE ID
             if ($platform === 'facebook') {
                 $pagesRes = $this->executeAction($office, 'FACEBOOK_LIST_MANAGED_PAGES', [], $connectionId);
                 $pagesData = $pagesRes['data']['data'] ?? $pagesRes['data']['response_data'] ?? [];
@@ -203,7 +214,7 @@ class ComposioService
                 if (!empty($pages)) {
                     $selectedPage = null;
 
-                    // A. Prioritas 1: Jika Channel sudah memiliki Page ID yang valid, pastikan Page ID itu tetap dipertahankan
+                    // Prioritas 1: Jika sudah ada Page ID manual di database, pertahankan
                     if (!empty($channel->identifier)) {
                         foreach ($pages as $p) {
                             if ((string)($p['id'] ?? '') === (string)$channel->identifier) {
@@ -213,7 +224,7 @@ class ComposioService
                         }
                     }
 
-                    // B. Prioritas 2: Jika belum ada, cocokkan nama Halaman dengan nama Kantor
+                    // Prioritas 2: Cocokkan nama Halaman dengan nama Kantor
                     if (!$selectedPage) {
                         $officeNameLower = strtolower($office->name);
                         foreach ($pages as $p) {
@@ -225,7 +236,7 @@ class ComposioService
                         }
                     }
 
-                    // C. Prioritas 3: Fallback ke halaman pertama hanya jika belum ada pilihan sama sekali
+                    // Prioritas 3: Ambil halaman pertama yang tersedia
                     if (!$selectedPage) {
                         $selectedPage = $pages[0];
                     }
@@ -237,12 +248,13 @@ class ComposioService
                         $channel->update([
                             'identifier' => (string) $pageId,
                             'name'       => $pageName ? "FB: {$pageName}" : $channel->name,
+                            'status'     => 'connected',
                         ]);
-                        Log::info("🎯 [FB Smart Page Matcher] Kantor: {$office->name} -> Halaman: {$pageName} (ID: {$pageId})");
                     }
                 }
             }
 
+            Log::info("✅ [Auto-Sync Sukses] Channel: {$channel->name} (ID: {$channel->identifier}) status -> CONNECTED");
             return $channel;
         } catch (\Throwable $e) {
             Log::error("Exception autoSyncOfficeChannel: " . $e->getMessage());
