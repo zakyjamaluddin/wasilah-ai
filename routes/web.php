@@ -7,6 +7,7 @@ use App\Models\Channel;
 use App\Models\Order;
 use App\Services\PaymentGatewayService;
 use Illuminate\Support\Facades\Route;
+use App\Models\Office;
 
 Route::get('/', function () {
     return view('landing');
@@ -120,45 +121,29 @@ Route::get('/test-instagram', function () {
     ]);
 });
 
-use App\Models\Office;
-use App\Services\ComposioService;
+Route::get('/debug-composio', function () {
+    $offices = Office::with(['channels' => function($q) {
+        $q->where('type', 'facebook');
+    }])->get();
 
-Route::get('/debug-composio', function (ComposioService $composio) {
-    $office = Office::with('composioAccount')->first();
-    $realRecipientId = "1551001142903584"; // IGSID Asli Kenbi Farm
-    // 1. Tarik Percakapan Asli di Akun Instagram yang Terhubung
-    $convsResult = $composio->executeAction($office, 'INSTAGRAM_LIST_ALL_CONVERSATIONS');
-
-    // 2. Ambil ID Pesan / Recipient dari Percakapan Terbaru
-    $items = $convsResult['data']['data']['data'] ?? $convsResult['data']['data'] ?? [];
-    $firstConv = $items[0] ?? null;
-    $targetRecipientId = '17841469669611882'; // ID dari chat Anda tadi
-
-    if (!empty($firstConv['participants']['data'])) {
-        foreach ($firstConv['participants']['data'] as $p) {
-            if ($p['id'] !== '17841469669611882') {
-                $targetRecipientId = $p['id'];
-                break;
-            }
-        }
-    };
-
-
-
-    $testReply = "Waalaikumsalam Mas Zaky! 🎉 Ini balasan otomatis Instagram resmi dari Wasilah AI via Composio (" . now()->format('H:i:s') . ").";
-
-    // Eksekusi tool INSTAGRAM_SEND_TEXT_MESSAGE
-    $sendResult = $composio->executeAction($office, 'INSTAGRAM_SEND_TEXT_MESSAGE', [
-        'recipient_id' => '1744463296786445',
-        'text'         => $testReply,
-    ]);
+    $report = [];
+    foreach ($offices as $off) {
+        $fbChannel = $off->channels->first();
+        $report[] = [
+            'office_id' => $off->id,
+            'office_name' => $off->name,
+            'office_slug' => $off->slug,
+            'channel_found' => $fbChannel ? true : false,
+            'channel_name' => $fbChannel?->name,
+            'page_id_identifier' => $fbChannel?->identifier,
+            'connection_id' => $fbChannel?->composio_connection_id,
+            'status' => $fbChannel?->status,
+            'is_bot_enabled' => $fbChannel?->is_bot_enabled,
+        ];
+    }
 
     return response()->json([
-        'first_conversation' => $firstConv,
-        'items_in_conversation' => $items,
-        'conversations_result' => $convsResult,
-        'real_recipient_id' => $realRecipientId,
-        'target_recipient_id' => $targetRecipientId,
-        'send_result'         => $sendResult,
+        'total_offices' => count($report),
+        'channels_status' => $report,
     ], 200, [], JSON_PRETTY_PRINT);
 });

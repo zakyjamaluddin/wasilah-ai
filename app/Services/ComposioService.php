@@ -174,7 +174,7 @@ class ComposioService
             foreach ($items as $item) {
                 $slug = strtolower($item['toolkit']['slug'] ?? $item['appName'] ?? '');
                 $status = strtoupper($item['status'] ?? $item['data']['status'] ?? '');
-                
+
                 if ($slug === $toolkitSlug && in_array($status, ['ACTIVE', 'CONNECTED', 'SUCCESS'])) {
                     $matchedAccount = $item;
                     break;
