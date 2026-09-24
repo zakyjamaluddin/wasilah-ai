@@ -41,50 +41,19 @@ Route::post('/checkout/pay/{invoice}', [CheckoutController::class, 'pay'])->name
 
 
 Route::get('/debug-composio', function (ComposioService $composio) {
-    // 1. Ambil Kredensial Meta App Pribadi Anda dari config/services.php
-    $appId = config('services.meta.client_id') ?? config('services.meta.app_id') ?? env('META_APP_ID');
-    $appSecret = config('services.meta.client_secret') ?? config('services.meta.app_secret') ?? env('META_APP_SECRET');
+    // 1. Ambil Kantor Mutamtour Babat (Office ID 4)
+    $office = Office::find(4);
 
-    $babatPageId = "132125273311890"; // ID Mutamtour Babat
-    $office = Office::find(4); // Kantor Mutamtour Babat
+    // 2. Jalankan Auto-Sync & Simpan Token Cara V1
+    $channel = $composio->autoSyncOfficeChannel($office, 'facebook');
 
-    // 2. Tarik Token Halaman Babat dari Composio
-    $channel = Channel::where('office_id', $office->id)->where('type', 'facebook')->first();
-    $pagesRes = $composio->executeAction($office, 'FACEBOOK_LIST_MANAGED_PAGES', [], $channel?->composio_connection_id);
-    $pages = $pagesRes['data']['data'] ?? $pagesRes['data']['response_data'] ?? [];
-    $pagesArray = isset($pages['data']) ? $pages['data'] : (is_array($pages) ? $pages : []);
-
-    $pageAccessToken = null;
-    foreach ($pagesArray as $p) {
-        if ((string)$p['id'] === $babatPageId) {
-            $pageAccessToken = $p['access_token'] ?? null;
-            break;
-        }
-    }
-
-    $results = [];
-
-    // 3. EKSEKUSI PENDAFTARAN KE APLIKASI META PRIBADI ANDA OTOMATIS
-    if ($appId && $appSecret) {
-        $appToken = "{$appId}|{$appSecret}";
-
-        // Tembak Graph API untuk mendaftarkan Babat ke App Pribadi Anda
-        $subscribeToMyApp = Http::post("https://graph.facebook.com/v21.0/{$babatPageId}/subscribed_apps", [
-            'subscribed_fields' => 'messages,messaging_postbacks,feed,message_deliveries,message_reads',
-            'access_token'      => $pageAccessToken ?: $appToken,
-        ])->json();
-
-        $results['subscribe_to_my_meta_app_result'] = $subscribeToMyApp;
-    } else {
-        $results['subscribe_to_my_meta_app_result'] = 'META_APP_ID atau META_APP_SECRET belum ditemukan di .env / config.';
-    }
-
-    // 4. CEK ULANG DAFTAR SUBSCRIBED APPS DI META UNTUK HALAMAN BABAT
-    $subscribedAppsNow = Http::get("https://graph.facebook.com/v21.0/{$babatPageId}/subscribed_apps", [
-        'access_token' => $pageAccessToken,
-    ])->json();
-
-    $results['current_subscribed_apps_after_fix'] = $subscribedAppsNow;
-
-    return response()->json($results, 200, [], JSON_PRETTY_PRINT);
+    return response()->json([
+        'pesan'               => 'Halaman Mutamtour Babat berhasil disimpan dengan Token Cara V1!',
+        'office_name'         => $office->name,
+        'channel_name'        => $channel?->name,
+        'page_id'             => $channel?->identifier,
+        'has_token_in_db'     => !empty($channel?->credentials['access_token']),
+        'token_preview'       => $channel?->credentials['access_token'] ? substr($channel->credentials['access_token'], 0, 15) . '...' : null,
+        'status'              => $channel?->status,
+    ], 200, [], JSON_PRETTY_PRINT);
 });
