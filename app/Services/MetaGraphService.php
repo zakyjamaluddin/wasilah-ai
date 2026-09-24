@@ -187,7 +187,7 @@ class MetaGraphService
 
             // 🔥 KUNCI PERBAIKAN: FIELD KHUSUS INSTAGRAM VS FACEBOOK
             $fields = ($type === 'instagram')
-                ? 'messages,messaging_postbacks,comments,message_reactions,messaging_seen'
+                ? 'messages,messaging_postbacks,comments'
                 : 'messages,messaging_postbacks,feed,message_deliveries,message_reads,message_echoes';
 
             $response = Http::timeout(15)->post($endpoint, [
