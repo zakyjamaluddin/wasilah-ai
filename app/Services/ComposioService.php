@@ -152,6 +152,9 @@ class ComposioService
     /**
      * 3. BACKGROUND AUTO-SYNC + SIMPAN TOKEN KE CREDENTIALS CARA V1
      */
+    /**
+     * 3. BACKGROUND AUTO-SYNC DENGAN DUKUNGAN TOKEN V1 + AUTO-SUBSCRIBE
+     */
     public function autoSyncOfficeChannel(Office $office, string $platform = 'facebook'): ?Channel
     {
         try {
@@ -181,24 +184,30 @@ class ComposioService
 
             $connectionId = $matchedAccount['id'];
 
-            // 2. Ambil Channel di database
+            // 2. Ambil atau buat Channel di database
             $channel = Channel::firstOrCreate(
                 ['office_id' => $office->id, 'type' => $platform],
                 ['name' => strtoupper($platform) . ': ' . $office->name, 'is_bot_enabled' => true]
             );
 
-            // 3. TARIK DAFTAR HALAMAN DARI META VIA COMPOSIO
+            // 3. JIKA FACEBOOK: TARIK DAFTAR HALAMAN LENGKAP DENGAN ACCESS TOKEN
             if ($platform === 'facebook') {
                 $pagesRes = $this->executeAction($office, 'FACEBOOK_LIST_MANAGED_PAGES', [], $connectionId);
-                $pagesData = $pagesRes['data']['data'] ?? $pagesRes['data']['response_data'] ?? [];
-                $pages = isset($pagesData['data']) && is_array($pagesData['data']) ? $pagesData['data'] : (is_array($pagesData) ? $pagesData : []);
 
-                if (!empty($pages)) {
+                // Ekstraksi array pages dari nesting Composio v3.1
+                $pages = $pagesRes['data']['data']['data']
+                    ?? $pagesRes['data']['data']
+                    ?? $pagesRes['data']['response_data']
+                    ?? [];
+
+                $pagesArray = is_array($pages) ? $pages : [];
+
+                if (!empty($pagesArray)) {
                     $selectedPage = null;
 
                     // Prioritas 1: Cocokkan Page ID yang sudah ada di database
                     if (!empty($channel->identifier)) {
-                        foreach ($pages as $p) {
+                        foreach ($pagesArray as $p) {
                             if ((string)($p['id'] ?? '') === (string)$channel->identifier) {
                                 $selectedPage = $p;
                                 break;
@@ -209,7 +218,7 @@ class ComposioService
                     // Prioritas 2: Cocokkan nama Halaman dengan nama Kantor
                     if (!$selectedPage) {
                         $officeNameLower = strtolower($office->name);
-                        foreach ($pages as $p) {
+                        foreach ($pagesArray as $p) {
                             $pageNameLower = strtolower($p['name'] ?? '');
                             if (str_contains($pageNameLower, $officeNameLower) || str_contains($officeNameLower, $pageNameLower)) {
                                 $selectedPage = $p;
@@ -220,7 +229,7 @@ class ComposioService
 
                     // Prioritas 3: Fallback ke halaman pertama
                     if (!$selectedPage) {
-                        $selectedPage = $pages[0];
+                        $selectedPage = $pagesArray[0];
                     }
 
                     $pageId = (string) ($selectedPage['id'] ?? '');
@@ -233,7 +242,7 @@ class ComposioService
                         $currentCredentials['access_token'] = $pageAccessToken;
                     }
 
-                    // 🔥 SIMPAN KE DATABASE (LENGKAP DENGAN ACCESS TOKEN V1)
+                    // Simpan ke database
                     $channel->update([
                         'identifier'             => $pageId,
                         'name'                   => $pageName ? "FB: {$pageName}" : $channel->name,
@@ -243,14 +252,13 @@ class ComposioService
                         'status'                 => 'connected',
                     ]);
 
-                    // 🔥 DAFTARKAN WEBHOOK KE META MENGGUNAKAN CARA V1
+                    // 🔥 DAFTARKAN WEBHOOK CARA V1 OTOMATIS
                     if ($pageId && $pageAccessToken) {
                         try {
                             $meta = app(\App\Services\MetaGraphService::class);
                             $subResult = $meta->subscribePageWebhook($pageId, $pageAccessToken, 'facebook');
-                            Log::info("📡 [Pendaftaran Cara V1 Berhasil!] Halaman: {$pageName} ({$pageId}) -> Respon: " . json_encode($subResult));
+                            Log::info("📡 [Meta Webhook Auto-Subscribed] Halaman: {$pageName} ({$pageId}) -> Respon: " . json_encode($subResult));
                         } catch (\Throwable $e) {
-                            // Fallback jika direct HTTP
                             Http::post("https://graph.facebook.com/v21.0/{$pageId}/subscribed_apps", [
                                 'subscribed_fields' => 'messages,messaging_postbacks,feed,message_deliveries,message_reads',
                                 'access_token'      => $pageAccessToken,
