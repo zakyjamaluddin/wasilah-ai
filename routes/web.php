@@ -39,94 +39,52 @@ Route::get('/checkout/invoice/{invoice}', [CheckoutController::class, 'invoice']
 Route::post('/checkout/pay/{invoice}', [CheckoutController::class, 'pay'])->name('checkout.pay');
 
 
+
 Route::get('/debug-composio', function (ComposioService $composio) {
-    $offices = Office::with(['channels' => function($q) {
-        $q->where('type', 'facebook');
-    }, 'composioAccount'])->get();
+    // 1. Ambil Kredensial Meta App Pribadi Anda dari config/services.php
+    $appId = config('services.meta.client_id') ?? config('services.meta.app_id') ?? env('META_APP_ID');
+    $appSecret = config('services.meta.client_secret') ?? config('services.meta.app_secret') ?? env('META_APP_SECRET');
 
-    $fullAuditReport = [];
+    $babatPageId = "132125273311890"; // ID Mutamtour Babat
+    $office = Office::find(4); // Kantor Mutamtour Babat
 
-    foreach ($offices as $office) {
-        $channel = $office->channels->first();
-        $connectionId = $channel?->composio_connection_id;
-        $pageId = $channel?->identifier;
+    // 2. Tarik Token Halaman Babat dari Composio
+    $channel = Channel::where('office_id', $office->id)->where('type', 'facebook')->first();
+    $pagesRes = $composio->executeAction($office, 'FACEBOOK_LIST_MANAGED_PAGES', [], $channel?->composio_connection_id);
+    $pages = $pagesRes['data']['data'] ?? $pagesRes['data']['response_data'] ?? [];
+    $pagesArray = isset($pages['data']) ? $pages['data'] : (is_array($pages) ? $pages : []);
 
-        $pageAccessToken = null;
-        $allManagedPagesForOffice = [];
-        $metaSubscribedApps = null;
-        $pageDetails = null;
-
-        // 1. Tarik Halaman & Token dari Composio jika ada akun Composio
-        if ($office->composioAccount) {
-            try {
-                $pagesRes = $composio->executeAction($office, 'FACEBOOK_LIST_MANAGED_PAGES', [], $connectionId);
-                $pagesData = $pagesRes['data']['data'] ?? $pagesRes['data']['response_data'] ?? [];
-                $pages = isset($pagesData['data']) && is_array($pagesData['data']) ? $pagesData['data'] : (is_array($pagesData) ? $pagesData : []);
-
-                foreach ($pages as $p) {
-                    $allManagedPagesForOffice[] = [
-                        'id'   => $p['id'] ?? null,
-                        'name' => $p['name'] ?? null,
-                    ];
-
-                    if ((string)($p['id'] ?? '') === (string)$pageId) {
-                        $pageAccessToken = $p['access_token'] ?? null;
-                    }
-                }
-
-                // Jika pageAccessToken belum ketemu dari ID, ambil dari halaman pertama yang cocok
-                if (!$pageAccessToken && !empty($pages)) {
-                    $pageAccessToken = $pages[0]['access_token'] ?? null;
-                }
-            } catch (\Throwable $e) {
-                $allManagedPagesForOffice = 'Error: ' . $e->getMessage();
-            }
+    $pageAccessToken = null;
+    foreach ($pagesArray as $p) {
+        if ((string)$p['id'] === $babatPageId) {
+            $pageAccessToken = $p['access_token'] ?? null;
+            break;
         }
-
-        // 2. Jika ada Token Halaman, Tanya Langsung ke Meta Graph API
-        if ($pageId && $pageAccessToken) {
-            try {
-                // Cek Subscribed Apps di Meta
-                $subRes = Http::timeout(8)->get("https://graph.facebook.com/v21.0/{$pageId}/subscribed_apps", [
-                    'access_token' => $pageAccessToken,
-                ]);
-                $metaSubscribedApps = $subRes->json();
-
-                // Cek Status Halaman di Meta
-                $infoRes = Http::timeout(8)->get("https://graph.facebook.com/v21.0/{$pageId}", [
-                    'fields'       => 'id,name,is_published,can_post',
-                    'access_token' => $pageAccessToken,
-                ]);
-                $pageDetails = $infoRes->json();
-            } catch (\Throwable $e) {
-                $metaSubscribedApps = 'Meta Error: ' . $e->getMessage();
-            }
-        }
-
-        $fullAuditReport[] = [
-            'office_id'                => $office->id,
-            'office_name'              => $office->name,
-            'office_slug'              => $office->slug,
-            'database_channel'         => [
-                'id'                     => $channel?->id,
-                'name'                   => $channel?->name,
-                'type'                   => $channel?->type,
-                'identifier_page_id'     => $channel?->identifier,
-                'composio_connection_id' => $channel?->composio_connection_id,
-                'status'                 => $channel?->status,
-                'is_bot_enabled'         => $channel?->is_bot_enabled,
-            ],
-            'pages_returned_by_composio' => $allManagedPagesForOffice,
-            'meta_graph_verification'  => [
-                'has_token'              => !empty($pageAccessToken),
-                'page_details'           => $pageDetails,
-                'subscribed_apps_on_meta'=> $metaSubscribedApps,
-            ]
-        ];
     }
 
-    return response()->json([
-        'total_offices_audited' => count($fullAuditReport),
-        'audit_results'         => $fullAuditReport,
-    ], 200, [], JSON_PRETTY_PRINT);
+    $results = [];
+
+    // 3. EKSEKUSI PENDAFTARAN KE APLIKASI META PRIBADI ANDA OTOMATIS
+    if ($appId && $appSecret) {
+        $appToken = "{$appId}|{$appSecret}";
+
+        // Tembak Graph API untuk mendaftarkan Babat ke App Pribadi Anda
+        $subscribeToMyApp = Http::post("https://graph.facebook.com/v21.0/{$babatPageId}/subscribed_apps", [
+            'subscribed_fields' => 'messages,messaging_postbacks,feed,message_deliveries,message_reads',
+            'access_token'      => $pageAccessToken ?: $appToken,
+        ])->json();
+
+        $results['subscribe_to_my_meta_app_result'] = $subscribeToMyApp;
+    } else {
+        $results['subscribe_to_my_meta_app_result'] = 'META_APP_ID atau META_APP_SECRET belum ditemukan di .env / config.';
+    }
+
+    // 4. CEK ULANG DAFTAR SUBSCRIBED APPS DI META UNTUK HALAMAN BABAT
+    $subscribedAppsNow = Http::get("https://graph.facebook.com/v21.0/{$babatPageId}/subscribed_apps", [
+        'access_token' => $pageAccessToken,
+    ])->json();
+
+    $results['current_subscribed_apps_after_fix'] = $subscribedAppsNow;
+
+    return response()->json($results, 200, [], JSON_PRETTY_PRINT);
 });
