@@ -214,7 +214,7 @@ class MetaGraphService
             // =================== DARI GIT =======================
             if ($type === 'instagram') {
                 $response = Http::get("{$this->graphUrl}/{$identifier}", [
-                    'fields' => 'id,username,messages',
+                    'fields' => 'id,username',
                     'access_token' => $pageAccessToken,
                 ]);
 
