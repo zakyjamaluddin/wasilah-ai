@@ -40,36 +40,29 @@ Route::get('/checkout/invoice/{invoice}', [CheckoutController::class, 'invoice']
 Route::post('/checkout/pay/{invoice}', [CheckoutController::class, 'pay'])->name('checkout.pay');
 
 
-Route::get('/debug-composio', function () {
-    // Ambil Channel Instagram yang ada di database
-    $igChannel = Channel::where('type', 'instagram')->whereNotNull('credentials')->latest('id')->first();
+
+Route::get('/debug-composio', function (MetaGraphService $meta) {
+    // 1. Ambil Channel Instagram Mutamtour Babat
+    $igChannel = Channel::where('type', 'instagram')
+        ->where('identifier', '17841461951008043')
+        ->first();
 
     if (!$igChannel) {
-        return response()->json(['error' => 'Belum ada Channel Instagram dengan kredensial token di database.'], 404);
+        $igChannel = Channel::where('type', 'instagram')->whereNotNull('credentials')->first();
     }
 
     $token = $igChannel->credentials['access_token'] ?? null;
-    $identifier = $igChannel->identifier;
+    $targetIgsid = "1551001142903584"; // ID Instagram Penerima (Zaky Apps / Akun Penguji)
 
-    // 1. Cek info akun Instagram dari Token
-    $verifyRes = Http::get("https://graph.facebook.com/v21.0/{$identifier}", [
-        'fields'       => 'id,name,username,profile_picture_url',
-        'access_token' => $token,
-    ])->json();
+    $testReply = "Halo Kak! Ini adalah tes balasan resmi langsung dari Instagram @mutamtour.babat via Meta Graph API (" . now()->format('H:i:s') . ").";
 
-    // 2. Tarik daftar akun Instagram yang terikat pada token ini via /me/accounts
-    $accountsRes = Http::get("https://graph.facebook.com/v21.0/me/accounts", [
-        'fields'       => 'id,name,instagram_business_account{id,username,name}',
-        'access_token' => $token,
-    ])->json();
+    // 2. Eksekusi Kirim DM Instagram via MetaGraphService
+    $sendResult = $meta->sendInstagramDmReply($token, $targetIgsid, $testReply);
 
     return response()->json([
-        'channel_in_db'             => [
-            'name'       => $igChannel->name,
-            'identifier' => $igChannel->identifier,
-        ],
-        'token_verification_result' => $verifyRes,
-        'linked_instagram_accounts' => $accountsRes,
+        'instagram_account' => $igChannel?->name,
+        'identifier'        => $igChannel?->identifier,
+        'target_recipient'  => $targetIgsid,
+        'send_dm_result'    => $sendResult,
     ], 200, [], JSON_PRETTY_PRINT);
 });
-
