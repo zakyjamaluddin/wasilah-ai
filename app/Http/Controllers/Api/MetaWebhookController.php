@@ -186,7 +186,7 @@ class MetaWebhookController extends Controller
                 }
 
                 // =============================================================
-                // B. EVENT: FEED & KOMENTAR (FB & IG)
+                // B. EVENT: FEED & BALAS KOMENTAR (FACEBOOK & INSTAGRAM)
                 // =============================================================
                 if (!empty($entry['changes'])) {
                     foreach ($entry['changes'] as $change) {
@@ -196,11 +196,12 @@ class MetaWebhookController extends Controller
                         // 🎯 1. FACEBOOK AUTO FIRST COMMENT
                         $postTypes = ['status', 'photo', 'video', 'post', 'share'];
                         if ($object === 'page' && $field === 'feed' && in_array($val['item'] ?? '', $postTypes) && ($val['verb'] ?? '') === 'add') {
-                            $postId = $val['post_id'] ?? $val['id'] ?? null;
+                            $postId = (string) ($val['post_id'] ?? $val['id'] ?? '');
                             $firstCommentText = $credentials['auto_first_comment'] ?? null;
 
-                            if ($postId && $firstCommentText) {
-                                $meta->postFirstComment($accessToken, (string)$postId, $firstCommentText);
+                            // 🛡️ ATOMIC LOCK UNTUK FIRST COMMENT
+                            if ($postId && $firstCommentText && Cache::add("fb_first_comment_{$postId}", true, now()->addHours(2))) {
+                                $meta->postFirstComment($accessToken, $postId, $firstCommentText);
                             }
                         }
 
@@ -209,104 +210,116 @@ class MetaWebhookController extends Controller
                             $commentId = (string) ($val['comment_id'] ?? '');
                             $senderId = (string) ($val['from']['id'] ?? '');
                             $senderName = $val['from']['name'] ?? 'Netizen FB';
-                            $commentText = $val['message'] ?? '';
+                            $commentText = trim($val['message'] ?? '');
 
-                            if ($commentId && $senderId !== $pageId && !empty($commentText) && $channel->is_bot_enabled) {
-                                $lockKey = "fb_comment_lock_{$commentId}";
-                                if (Cache::has($lockKey)) continue;
-                                Cache::put($lockKey, true, now()->addMinutes(30));
+                            // Abaikan jika komentar kosong atau dibuat oleh Page sendiri
+                            if (!$commentId || empty($commentText) || $senderId === $pageId || !$channel->is_bot_enabled) {
+                                continue;
+                            }
 
-                                $contact = Contact::firstOrCreate(
-                                    ['office_id' => $officeId, 'fb_user_id' => $senderId],
-                                    ['name' => $senderName, 'pipeline_stage' => 'lead']
-                                );
+                            // 🛡️ ATOMIC DEDUPLICATION LOCK (FB COMMENT)
+                            // Hanya request pertama yang dapat memproses komentar ini
+                            if (!Cache::add("fb_comment_lock_{$commentId}", true, now()->addHours(1))) {
+                                Log::info("ℹ️ [Duplicate FB Comment Dropped] Comment ID: {$commentId}");
+                                continue;
+                            }
 
-                                $conversation = Conversation::firstOrCreate(
-                                    ['office_id' => $officeId, 'channel_id' => $channel->id, 'contact_id' => $contact->id],
-                                    ['channel_type' => 'fb_comment', 'is_bot_active' => true]
-                                );
+                            $contact = Contact::firstOrCreate(
+                                ['office_id' => $officeId, 'fb_user_id' => $senderId],
+                                ['name' => $senderName, 'pipeline_stage' => 'lead']
+                            );
+
+                            $conversation = Conversation::firstOrCreate(
+                                ['office_id' => $officeId, 'channel_id' => $channel->id, 'contact_id' => $contact->id],
+                                ['channel_type' => 'fb_comment', 'is_bot_active' => true]
+                            );
+
+                            Message::create([
+                                'conversation_id'     => $conversation->id,
+                                'office_id'           => $officeId,
+                                'sender_type'         => 'customer',
+                                'message_type'        => 'text',
+                                'message_body'        => "[Komentar FB]: {$commentText}",
+                                'external_message_id' => $commentId,
+                                'is_read'             => false,
+                            ]);
+
+                            $conversation->update([
+                                'last_message_at' => now(),
+                                'unread_count'    => $conversation->unread_count + 1
+                            ]);
+
+                            $aiReply = $gemini->generateReply($conversation);
+                            if ($aiReply) {
+                                $meta->replyToFacebookComment($accessToken, $commentId, $aiReply);
 
                                 Message::create([
-                                    'conversation_id'     => $conversation->id,
-                                    'office_id'           => $officeId,
-                                    'sender_type'         => 'customer',
-                                    'message_type'        => 'text',
-                                    'message_body'        => $commentText,
-                                    'external_message_id' => $commentId,
-                                    'is_read'             => false,
+                                    'conversation_id' => $conversation->id,
+                                    'office_id'       => $officeId,
+                                    'sender_type'     => 'bot',
+                                    'message_type'    => 'text',
+                                    'message_body'    => $aiReply,
+                                    'is_read'         => true,
                                 ]);
-
-                                $conversation->update([
-                                    'last_message_at' => now(),
-                                    'unread_count'    => $conversation->unread_count + 1
-                                ]);
-
-                                $aiReply = $gemini->generateReply($conversation);
-                                if ($aiReply) {
-                                    $meta->replyToFacebookComment($accessToken, $commentId, $aiReply);
-
-                                    Message::create([
-                                        'conversation_id' => $conversation->id,
-                                        'office_id'       => $officeId,
-                                        'sender_type'     => 'bot',
-                                        'message_type'    => 'text',
-                                        'message_body'    => $aiReply,
-                                        'is_read'         => true,
-                                    ]);
-                                }
                             }
                         }
 
-                        // 🎯 3. INSTAGRAM AI AUTO-REPLY KOMENTAR
+                        // 🎯 3. INSTAGRAM AI AUTO-REPLY KOMENTAR (POSTINGAN / REELS)
                         if ($object === 'instagram' && $field === 'comments') {
                             $commentId = (string) ($val['id'] ?? '');
                             $senderId = (string) ($val['from']['id'] ?? '');
                             $senderUsername = $val['from']['username'] ?? 'Netizen IG';
-                            $commentText = $val['text'] ?? '';
+                            $commentText = trim($val['text'] ?? '');
 
-                            if ($commentId && $senderId !== $pageId && !empty($commentText) && $channel->is_bot_enabled) {
-                                $lockKey = "ig_comment_lock_{$commentId}";
-                                if (Cache::has($lockKey)) continue;
-                                Cache::put($lockKey, true, now()->addMinutes(30));
+                            // Abaikan jika komentar kosong, dibuat oleh akun IG sendiri, atau bot nonaktif
+                            if (!$commentId || empty($commentText) || $senderId === $pageId || !$channel->is_bot_enabled) {
+                                continue;
+                            }
 
-                                $contact = Contact::firstOrCreate(
-                                    ['office_id' => $officeId, 'ig_username' => $senderUsername],
-                                    ['name' => "@{$senderUsername}", 'pipeline_stage' => 'lead']
-                                );
+                            // 🛡️ ATOMIC DEDUPLICATION LOCK (INSTAGRAM COMMENT)
+                            // Menjamin 100% tidak ada komentar ganda/kembar yang diproses bersamaan
+                            if (!Cache::add("ig_comment_lock_{$commentId}", true, now()->addHours(1))) {
+                                Log::info("ℹ️ [Duplicate IG Comment Dropped] Comment ID: {$commentId}");
+                                continue;
+                            }
 
-                                $conversation = Conversation::firstOrCreate(
-                                    ['office_id' => $officeId, 'channel_id' => $channel->id, 'contact_id' => $contact->id],
-                                    ['channel_type' => 'ig_comment', 'is_bot_active' => true]
-                                );
+                            $contact = Contact::firstOrCreate(
+                                ['office_id' => $officeId, 'ig_username' => $senderUsername],
+                                ['name' => "@{$senderUsername}", 'pipeline_stage' => 'lead']
+                            );
+
+                            $conversation = Conversation::firstOrCreate(
+                                ['office_id' => $officeId, 'channel_id' => $channel->id, 'contact_id' => $contact->id],
+                                ['channel_type' => 'ig_comment', 'is_bot_active' => true]
+                            );
+
+                            Message::create([
+                                'conversation_id'     => $conversation->id,
+                                'office_id'           => $officeId,
+                                'sender_type'         => 'customer',
+                                'message_type'        => 'text',
+                                'message_body'        => "[Komentar IG]: {$commentText}",
+                                'external_message_id' => $commentId,
+                                'is_read'             => false,
+                            ]);
+
+                            $conversation->update([
+                                'last_message_at' => now(),
+                                'unread_count'    => $conversation->unread_count + 1
+                            ]);
+
+                            $aiReply = $gemini->generateReply($conversation);
+                            if ($aiReply) {
+                                $meta->replyToInstagramComment($accessToken, $commentId, $aiReply);
 
                                 Message::create([
-                                    'conversation_id'     => $conversation->id,
-                                    'office_id'           => $officeId,
-                                    'sender_type'         => 'customer',
-                                    'message_type'        => 'text',
-                                    'message_body'        => $commentText,
-                                    'external_message_id' => $commentId,
-                                    'is_read'             => false,
+                                    'conversation_id' => $conversation->id,
+                                    'office_id'       => $officeId,
+                                    'sender_type'     => 'bot',
+                                    'message_type'    => 'text',
+                                    'message_body'    => $aiReply,
+                                    'is_read'         => true,
                                 ]);
-
-                                $conversation->update([
-                                    'last_message_at' => now(),
-                                    'unread_count'    => $conversation->unread_count + 1
-                                ]);
-
-                                $aiReply = $gemini->generateReply($conversation);
-                                if ($aiReply) {
-                                    $meta->replyToInstagramComment($accessToken, $commentId, $aiReply);
-
-                                    Message::create([
-                                        'conversation_id' => $conversation->id,
-                                        'office_id'       => $officeId,
-                                        'sender_type'     => 'bot',
-                                        'message_type'    => 'text',
-                                        'message_body'    => $aiReply,
-                                        'is_read'         => true,
-                                    ]);
-                                }
                             }
                         }
 
