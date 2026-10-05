@@ -29,10 +29,19 @@ class GeminiAiService
         $office = $conversation->office;
         $contact = $conversation->contact;
 
+        $rawChannelType = strtolower($conversation->channel_type ?? '');
+
+        $targetPlatform = match ($rawChannelType) {
+            'whatsapp'                         => 'whatsapp',
+            'facebook', 'fb_dm', 'fb_comment' => 'facebook',
+            'instagram', 'ig_dm', 'ig_comment' => 'instagram',
+            default                            => 'whatsapp',
+        };
+
         // A. Kumpulkan Materi Knowledge Base Kantor untuk Platform Ini
         $knowledge = KnowledgeBase::where('office_id', $office->id)
             ->where('is_active', true)
-            ->whereIn('platform', ['all', $conversation->channel_type])
+            ->whereIn('platform', ['all', $targetPlatform])
             ->pluck('content')
             ->filter()
             ->implode("\n\n---\n\n");
