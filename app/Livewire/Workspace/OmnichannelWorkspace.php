@@ -163,33 +163,52 @@ class OmnichannelWorkspace extends Component
         return Conversation::query()
             ->where('office_id', $this->office->id)
             ->with(['contact', 'channel', 'latestMessage'])
+            // 🔥 PERBAIKAN UTAMA: Mendukung kontak dengan wa_jid NULL (FB, IG, dan Personal WA)
             ->where(function ($query) {
-                $query->whereHas('contact', fn ($cq) => $cq->where('wa_jid', 'not like', '%@g.us%'))
-                      ->orWhereHas('channel', fn ($chq) => $chq->where('sync_groups', true));
+                $query->whereHas('contact', function ($cq) {
+                    $cq->whereNull('wa_jid')
+                       ->orWhere('wa_jid', 'not like', '%@g.us%');
+                })->orWhereHas('channel', function ($chq) {
+                    $chq->where('sync_groups', true);
+                });
             })
+            // Filter Tab WhatsApp
             ->when($this->tabFilter === 'whatsapp', function ($q) {
                 $q->where('channel_type', 'whatsapp')
-                  ->whereHas('contact', fn ($cq) => $cq->where('wa_jid', 'not like', '%@g.us%'));
+                  ->whereHas('contact', function ($cq) {
+                      $cq->whereNull('wa_jid')
+                         ->orWhere('wa_jid', 'not like', '%@g.us%');
+                  });
             })
+            // Filter Tab Facebook
             ->when($this->tabFilter === 'facebook', function ($q) {
                 $q->whereIn('channel_type', ['facebook', 'fb_dm', 'fb_comment']);
             })
+            // Filter Tab Instagram
             ->when($this->tabFilter === 'instagram', function ($q) {
                 $q->whereIn('channel_type', ['instagram', 'ig_dm', 'ig_comment']);
             })
+            // Filter Tab Grup WhatsApp
             ->when($this->tabFilter === 'group', function ($q) {
                 $q->where('channel_type', 'whatsapp')
-                  ->whereHas('contact', fn ($cq) => $cq->where('wa_jid', 'like', '%@g.us%'));
+                  ->whereHas('contact', function ($cq) {
+                      $cq->whereNotNull('wa_jid')
+                         ->where('wa_jid', 'like', '%@g.us%');
+                  });
             })
-            ->when(!empty($this->searchQuery), function ($q) {
-                $q->whereHas('contact', function ($cq) {
-                    $cq->where('name', 'like', "%{$this->searchQuery}%")
-                       ->orWhere('phone_number', 'like', "%{$this->searchQuery}%")
-                       ->orWhere('wa_jid', 'like', "%{$this->searchQuery}%")
-                       ->orWhere('ig_username', 'like', "%{$this->searchQuery}%");
+            // Pencarian Live Search
+            ->when(!empty(trim($this->searchQuery)), function ($q) {
+                $query = trim($this->searchQuery);
+                $q->whereHas('contact', function ($cq) use ($query) {
+                    $cq->where('name', 'like', "%{$query}%")
+                       ->orWhere('phone_number', 'like', "%{$query}%")
+                       ->orWhere('wa_jid', 'like', "%{$query}%")
+                       ->orWhere('ig_username', 'like', "%{$query}%")
+                       ->orWhere('fb_user_id', 'like', "%{$query}%");
                 });
             })
-            ->orderBy('last_message_at', 'desc')
+            // Urutkan berdasarkan pesan terakhir atau update terbaru
+            ->orderByRaw('COALESCE(last_message_at, updated_at, created_at) DESC')
             ->get();
     }
 

@@ -46,46 +46,41 @@
                     </button>
                 </div>
 
-                {{-- 🔥 5 TAB FILTER OMNICHANNEL ELEGAN (PILL STYLE) --}}
+                {{-- 5 TAB FILTER OMNICHANNEL ELEGAN --}}
                 <div class="grid grid-cols-5 gap-1 rounded-xl bg-slate-200/70 p-1 text-xs">
-                    {{-- 1. Semua --}}
                     <button
                         wire:click="$set('tabFilter', 'all')"
                         class="flex items-center justify-center py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer {{ $tabFilter === 'all' ? 'bg-white text-teal-800 font-extrabold shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-white/50' }}"
                     >
-                        <span>Semua</span>
+                        <span>🌟 Semua</span>
                     </button>
 
-                    {{-- 2. WhatsApp --}}
                     <button
                         wire:click="$set('tabFilter', 'whatsapp')"
                         class="flex items-center justify-center py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer {{ $tabFilter === 'whatsapp' ? 'bg-emerald-600 text-white font-extrabold shadow-sm' : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50' }}"
                     >
-                        <span>WA</span>
+                        <span>💬 WA</span>
                     </button>
 
-                    {{-- 3. Facebook --}}
                     <button
                         wire:click="$set('tabFilter', 'facebook')"
                         class="flex items-center justify-center py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer {{ $tabFilter === 'facebook' ? 'bg-blue-600 text-white font-extrabold shadow-sm' : 'text-slate-600 hover:text-blue-700 hover:bg-blue-50' }}"
                     >
-                        <span>FB</span>
+                        <span>📘 FB</span>
                     </button>
 
-                    {{-- 4. Instagram --}}
                     <button
                         wire:click="$set('tabFilter', 'instagram')"
                         class="flex items-center justify-center py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer {{ $tabFilter === 'instagram' ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white font-extrabold shadow-sm' : 'text-slate-600 hover:text-pink-700 hover:bg-pink-50' }}"
                     >
-                        <span>IG</span>
+                        <span>📷 IG</span>
                     </button>
 
-                    {{-- 5. Grup WA --}}
                     <button
                         wire:click="$set('tabFilter', 'group')"
                         class="flex items-center justify-center py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer {{ $tabFilter === 'group' ? 'bg-teal-700 text-white font-extrabold shadow-sm' : 'text-slate-600 hover:text-teal-800 hover:bg-teal-50' }}"
                     >
-                        <span>Group</span>
+                        <span>👥 Grup</span>
                     </button>
                 </div>
             </div>
@@ -96,20 +91,22 @@
                     @php
                         $isSelected = $selectedConversationId === $conv->id;
                         $lastMsg = $conv->latestMessage;
-                        $isGroupChat = str_contains($conv->contact->wa_jid ?? '', '@g.us');
-                        $avatarBg = $this->getAvatarColor($conv->contact->name ?? 'User');
+                        $contactName = $conv->contact?->name ?? 'User';
+                        $contactJid = $conv->contact?->wa_jid ?? '';
+                        $isGroupChat = str_contains($contactJid, '@g.us');
+                        $avatarBg = $this->getAvatarColor($contactName);
                     @endphp
                     <div
                         wire:click="selectConversation({{ $conv->id }})"
                         class="flex cursor-pointer items-start gap-3.5 p-3.5 transition-all {{ $isSelected ? 'bg-teal-50/70 border-l-4 border-teal-600' : 'hover:bg-slate-50/80' }}"
                     >
-                        {{-- Avatar Multi-Warna Konsisten --}}
+                        {{-- Avatar --}}
                         <div class="relative flex-shrink-0">
                             <div class="flex h-11 w-11 items-center justify-center rounded-2xl {{ $avatarBg }} text-sm font-black text-white shadow-sm ring-2 ring-white">
-                                {{ $isGroupChat ? '👥' : substr($conv->contact->name ?? 'C', 0, 1) }}
+                                {{ $isGroupChat ? '👥' : substr($contactName, 0, 1) }}
                             </div>
 
-                            {{-- Badge Platform Ikon --}}
+                            {{-- Badge Platform --}}
                             <span class="absolute -bottom-1 -right-1 px-1.5 py-0.2 rounded-full text-[9px] font-black text-white shadow-xs {{ $conv->channel_type === 'whatsapp' ? ($isGroupChat ? 'bg-teal-700' : 'bg-emerald-500') : ($conv->channel_type === 'fb_dm' || $conv->channel_type === 'fb_comment' || $conv->channel_type === 'facebook' ? 'bg-blue-600' : 'bg-gradient-to-tr from-purple-600 to-pink-600') }}">
                                 {{ $conv->channel_type === 'whatsapp' ? ($isGroupChat ? 'GRUP' : 'WA') : ($conv->channel_type === 'fb_dm' || $conv->channel_type === 'fb_comment' || $conv->channel_type === 'facebook' ? 'FB' : 'IG') }}
                             </span>
@@ -119,10 +116,10 @@
                         <div class="min-w-0 flex-1">
                             <div class="flex items-baseline justify-between">
                                 <h4 class="truncate text-xs sm:text-sm font-bold {{ $isSelected ? 'text-teal-900 font-extrabold' : 'text-slate-900' }}">
-                                    {{ $conv->contact->name }}
+                                    {{ $contactName }}
                                 </h4>
                                 <span class="text-[10px] text-slate-400 font-medium whitespace-nowrap ml-1">
-                                    {{ $conv->last_message_at ? $conv->last_message_at->diffForHumans(null, true, true) : '' }}
+                                    {{ $conv->last_message_at ? $conv->last_message_at->diffForHumans(null, true, true) : ($conv->updated_at ? $conv->updated_at->diffForHumans(null, true, true) : '') }}
                                 </span>
                             </div>
                             <p class="mt-1 truncate text-xs {{ $isSelected ? 'text-teal-700/80' : 'text-slate-500' }}">
@@ -152,8 +149,10 @@
         <div class="w-full md:w-7/12 lg:w-6/12 flex-1 min-h-0 flex-col bg-white border-r border-slate-200/80 relative {{ $mobileView === 'chat' ? 'flex' : 'hidden md:flex' }}">
             @if ($active)
                 @php
-                    $isGroupActive = str_contains($active->contact->wa_jid ?? '', '@g.us');
-                    $headerAvatarBg = $this->getAvatarColor($active->contact->name ?? 'User');
+                    $activeContactName = $active->contact?->name ?? 'User';
+                    $activeContactPhone = $active->contact?->phone_number ?: ($active->contact?->wa_jid ?? ($active->contact?->ig_username ?? '-'));
+                    $isGroupActive = str_contains($active->contact?->wa_jid ?? '', '@g.us');
+                    $headerAvatarBg = $this->getAvatarColor($activeContactName);
                 @endphp
 
                 {{-- Room Header --}}
@@ -164,16 +163,16 @@
                         </button>
 
                         <div class="flex h-10 w-10 items-center justify-center rounded-2xl {{ $headerAvatarBg }} text-sm font-black text-white shadow-sm ring-2 ring-teal-50">
-                            {{ $isGroupActive ? '👥' : substr($active->contact->name ?? 'C', 0, 1) }}
+                            {{ $isGroupActive ? '👥' : substr($activeContactName, 0, 1) }}
                         </div>
                         <div class="min-w-0">
                             <h3 class="truncate text-xs sm:text-sm font-extrabold text-slate-900 flex items-center gap-2">
-                                <span class="truncate">{{ $active->contact->name }}</span>
+                                <span class="truncate">{{ $activeContactName }}</span>
                                 <span class="rounded-full px-2 py-0.5 text-[9px] font-bold tracking-wide {{ $active->channel_type === 'whatsapp' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : ($active->channel_type === 'fb_dm' || $active->channel_type === 'fb_comment' || $active->channel_type === 'facebook' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-pink-50 text-pink-700 border border-pink-200') }}">
                                     {{ strtoupper(str_replace('_', ' ', $active->channel_type)) }}
                                 </span>
                             </h3>
-                            <p class="truncate font-mono text-[11px] text-slate-400 mt-0.5">{{ $active->contact->phone_number ?: $active->contact->wa_jid }}</p>
+                            <p class="truncate font-mono text-[11px] text-slate-400 mt-0.5">{{ $activeContactPhone }}</p>
                         </div>
                     </div>
 
@@ -268,7 +267,6 @@
                 {{-- INPUT BAR BOTTOM DOCK --}}
                 <div class="flex-shrink-0 border-t border-slate-100 bg-white p-3 sm:p-3.5">
                     <form wire:submit.prevent="sendReply" class="flex items-center gap-2">
-                        {{-- Tombol Klip Lampiran --}}
                         <label class="cursor-pointer rounded-xl p-2.5 text-slate-400 transition hover:bg-teal-50 hover:text-teal-600 flex-shrink-0">
                             <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
                             <input
@@ -286,7 +284,6 @@
                             class="flex-1 rounded-xl border border-slate-200/90 bg-slate-50 px-4 py-2.5 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:border-teal-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20 transition-all"
                         />
 
-                        {{-- Tombol Kirim Tosca-Emerald --}}
                         <button
                             type="submit"
                             wire:loading.attr="disabled"
@@ -298,7 +295,7 @@
                     </form>
                 </div>
 
-                {{-- 📱 FLOATING ACTION BUTTON (FAB) KHUSUS TAMPILAN HP: BUKA SUMMARY CRM --}}
+                {{-- FLOATING ACTION BUTTON (FAB) KHUSUS HP --}}
                 <div class="lg:hidden absolute bottom-20 right-4 z-20">
                     <button
                         type="button"
@@ -327,20 +324,22 @@
             @if ($active)
                 @php
                     $contact = $active->contact;
-                    $isGroupActive = str_contains($contact->wa_jid ?? '', '@g.us');
-                    $leadAvatarBg = $this->getAvatarColor($contact->name ?? 'User');
+                    $contactNameRight = $contact?->name ?? 'User';
+                    $contactPhoneRight = $contact?->phone_number ?: ($contact?->wa_jid ?? ($contact?->ig_username ?? '-'));
+                    $isGroupActive = str_contains($contact?->wa_jid ?? '', '@g.us');
+                    $leadAvatarBg = $this->getAvatarColor($contactNameRight);
                 @endphp
 
                 {{-- Profil Card --}}
                 <div class="rounded-2xl border border-slate-200/80 bg-white p-4 text-center shadow-xs">
                     <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl {{ $leadAvatarBg }} text-base font-extrabold text-white shadow-sm ring-4 ring-slate-50">
-                        {{ $isGroupActive ? '👥' : substr($contact->name ?? 'C', 0, 1) }}
+                        {{ $isGroupActive ? '👥' : substr($contactNameRight, 0, 1) }}
                     </div>
-                    <h3 class="mt-2.5 text-xs sm:text-sm font-extrabold text-slate-900">{{ $contact->name }}</h3>
-                    <p class="font-mono text-[11px] text-slate-400 mt-0.5">{{ $contact->phone_number ?: $contact->wa_jid }}</p>
+                    <h3 class="mt-2.5 text-xs sm:text-sm font-extrabold text-slate-900">{{ $contactNameRight }}</h3>
+                    <p class="font-mono text-[11px] text-slate-400 mt-0.5">{{ $contactPhoneRight }}</p>
                 </div>
 
-                @if (!$isGroupActive)
+                @if (!$isGroupActive && $contact)
                     {{-- Status Prospek Closing --}}
                     <div class="rounded-2xl border border-slate-200/80 bg-white p-3.5 space-y-2.5 shadow-xs">
                         <h4 class="text-xs font-extrabold text-slate-800">Status Prospek (Pipeline)</h4>
@@ -426,17 +425,15 @@
     </div>
 
     {{-- ========================================================================= --}}
-    {{-- 📱 MOBILE SLIDE-OVER DRAWER (SUMMARY CUSTOMER UNTUK TAMPILAN HP)         --}}
+    {{-- 📱 MOBILE SLIDE-OVER DRAWER (SUMMARY CUSTOMER UNTUK HP)                   --}}
     {{-- ========================================================================= --}}
     <div
         x-show="showMobileSummary"
         x-cloak
         class="fixed inset-0 z-50 overflow-hidden lg:hidden"
-        aria-labelledby="slide-over-title"
         role="dialog"
         aria-modal="true">
 
-        {{-- Backdrop Gelap --}}
         <div
             x-show="showMobileSummary"
             x-transition:enter="ease-in-out duration-300"
@@ -459,7 +456,6 @@
                 x-transition:leave-end="translate-x-full"
                 class="w-screen max-w-md bg-white shadow-2xl flex flex-col">
 
-                {{-- Header Drawer --}}
                 <div class="flex items-center justify-between border-b border-slate-200 px-4 py-3.5 bg-slate-50">
                     <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
                         <x-heroicon-s-sparkles class="w-4 h-4 text-teal-600" />
@@ -473,24 +469,21 @@
                     </button>
                 </div>
 
-                {{-- Isi Konten Drawer (Lengkap: Profil + Pipeline + AI Summary + Follow-Up Drip) --}}
                 <div class="flex-1 overflow-y-auto p-4 space-y-4">
-                    @if ($active)
+                    @if ($active && $active->contact)
                         @php
                             $contact = $active->contact;
                             $leadAvatarBg = $this->getAvatarColor($contact->name ?? 'User');
                         @endphp
 
-                        {{-- Profil Card --}}
                         <div class="rounded-2xl border border-slate-200 bg-white p-4 text-center shadow-xs">
                             <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl {{ $leadAvatarBg }} text-base font-extrabold text-white shadow-sm ring-4 ring-slate-50">
                                 {{ substr($contact->name ?? 'C', 0, 1) }}
                             </div>
                             <h3 class="mt-2.5 text-sm font-extrabold text-slate-900">{{ $contact->name }}</h3>
-                            <p class="font-mono text-xs text-slate-400 mt-0.5">{{ $contact->phone_number ?: $contact->wa_jid }}</p>
+                            <p class="font-mono text-xs text-slate-400 mt-0.5">{{ $contact->phone_number ?: ($contact->wa_jid ?? ($contact->ig_username ?? '-')) }}</p>
                         </div>
 
-                        {{-- Status Prospek Closing --}}
                         <div class="rounded-2xl border border-slate-200 bg-white p-3.5 space-y-2.5 shadow-xs">
                             <h4 class="text-xs font-extrabold text-slate-800">Status Prospek (Pipeline)</h4>
                             <div class="grid grid-cols-2 gap-1.5 text-xs">
@@ -505,7 +498,6 @@
                             </div>
                         </div>
 
-                        {{-- AI Needs Summary --}}
                         <div class="rounded-2xl border border-amber-200 bg-amber-50/40 p-3.5 space-y-2.5 shadow-xs">
                             <h4 class="flex items-center gap-1.5 text-xs font-extrabold text-amber-900">
                                 <x-heroicon-s-sparkles class="w-4 h-4 text-amber-500" />
@@ -520,53 +512,6 @@
                             <button wire:click="saveAiSummary" class="w-full rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 py-2 text-xs font-bold text-white shadow-sm hover:shadow-amber-500/20 transition cursor-pointer">
                                 Simpan Catatan
                             </button>
-                        </div>
-
-                        {{-- 🔥 WIDGET FOLLOW-UP DRIP SEQUENCE UNTUK TAMPILAN HP --}}
-                        @php
-                            $activeEnrollmentMobile = \App\Models\FollowUpEnrollment::where('contact_id', $contact->id)
-                                ->whereIn('status', ['active', 'paused'])
-                                ->with('sequence.steps')
-                                ->first();
-                        @endphp
-
-                        <div class="rounded-2xl border border-slate-200 bg-white p-3.5 space-y-2.5 shadow-xs">
-                            <h4 class="flex items-center justify-between text-xs font-extrabold text-slate-800">
-                                <span>🎯 Follow-Up Drip</span>
-                                @if ($activeEnrollmentMobile)
-                                    <span class="rounded-full px-2 py-0.5 text-[9px] font-bold {{ $activeEnrollmentMobile->status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700' }}">
-                                        {{ strtoupper($activeEnrollmentMobile->status) }}
-                                    </span>
-                                @endif
-                            </h4>
-
-                            @if ($activeEnrollmentMobile)
-                                <div class="rounded-xl bg-slate-50 p-2.5 border border-slate-200 space-y-1 text-xs">
-                                    <p class="font-bold text-slate-900 truncate">{{ $activeEnrollmentMobile->sequence->name }}</p>
-                                    <p class="text-slate-500">
-                                        Langkah <b>{{ $activeEnrollmentMobile->current_step_order }}</b> dari {{ $activeEnrollmentMobile->sequence->steps->count() }}
-                                    </p>
-                                    <p class="text-slate-400 text-[11px]">
-                                        Jadwal: {{ $activeEnrollmentMobile->next_scheduled_at ? $activeEnrollmentMobile->next_scheduled_at->format('d M, H:i') : '-' }}
-                                    </p>
-                                    <div class="flex space-x-1.5 pt-1.5">
-                                        @if ($activeEnrollmentMobile->status === 'active')
-                                            <button wire:click="pauseSequence({{ $activeEnrollmentMobile->id }})" class="flex-1 py-1.5 rounded-lg bg-amber-500 text-white font-bold text-xs cursor-pointer">Jeda</button>
-                                        @else
-                                            <button wire:click="resumeSequence({{ $activeEnrollmentMobile->id }})" class="flex-1 py-1.5 rounded-lg bg-emerald-600 text-white font-bold text-xs cursor-pointer">Lanjutkan</button>
-                                        @endif
-                                    </div>
-                                </div>
-                            @else
-                                <div class="space-y-1.5">
-                                    <select wire:change="enrollToSequence($event.target.value)" class="w-full rounded-xl border border-slate-200 p-2.5 text-xs bg-slate-50 text-slate-700 font-medium">
-                                        <option value="">+ Daftarkan ke Sequence...</option>
-                                        @foreach (\App\Models\FollowUpSequence::where('office_id', $office->id)->where('is_active', true)->get() as $s)
-                                            <option value="{{ $s->id }}">{{ $s->name }} ({{ $s->steps()->count() }} Langkah)</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                            @endif
                         </div>
                     @endif
                 </div>
@@ -640,4 +585,3 @@
     @endif
 
 </div>
-
