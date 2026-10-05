@@ -513,6 +513,45 @@
                                 Simpan Catatan
                             </button>
                         </div>
+
+                        <div class="rounded-2xl border border-slate-200/80 bg-white p-3.5 space-y-2.5 shadow-xs">
+                        <h4 class="flex items-center justify-between text-xs font-extrabold text-slate-800">
+                            <span>🎯 Follow-Up Drip</span>
+                            @if ($activeEnrollment)
+                                <span class="rounded-full px-2 py-0.5 text-[9px] font-bold {{ $activeEnrollment->status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700' }}">
+                                    {{ strtoupper($activeEnrollment->status) }}
+                                </span>
+                            @endif
+                        </h4>
+
+                        @if ($activeEnrollment)
+                            <div class="rounded-xl bg-slate-50 p-2.5 border border-slate-200 space-y-1 text-xs">
+                                <p class="font-bold text-slate-900 truncate">{{ $activeEnrollment->sequence->name }}</p>
+                                <p class="text-slate-500">
+                                    Langkah <b>{{ $activeEnrollment->current_step_order }}</b> dari {{ $activeEnrollment->sequence->steps->count() }}
+                                </p>
+                                <p class="text-slate-400 text-[11px]">
+                                    Jadwal: {{ $activeEnrollment->next_scheduled_at ? $activeEnrollment->next_scheduled_at->format('d M, H:i') : '-' }}
+                                </p>
+                                <div class="flex space-x-1.5 pt-1.5">
+                                    @if ($activeEnrollment->status === 'active')
+                                        <button wire:click="pauseSequence({{ $activeEnrollment->id }})" class="flex-1 py-1.5 rounded-lg bg-amber-500 text-white font-bold text-xs cursor-pointer">Jeda</button>
+                                    @else
+                                        <button wire:click="resumeSequence({{ $activeEnrollment->id }})" class="flex-1 py-1.5 rounded-lg bg-emerald-600 text-white font-bold text-xs cursor-pointer">Lanjutkan</button>
+                                    @endif
+                                </div>
+                            </div>
+                        @else
+                            <div class="space-y-1.5">
+                                <select wire:change="enrollToSequence($event.target.value)" class="w-full rounded-xl border border-slate-200 p-2.5 text-xs bg-slate-50 text-slate-700 font-medium">
+                                    <option value="">+ Daftarkan ke Sequence...</option>
+                                    @foreach (\App\Models\FollowUpSequence::where('office_id', $office->id)->where('is_active', true)->get() as $s)
+                                        <option value="{{ $s->id }}">{{ $s->name }} ({{ $s->steps()->count() }} Langkah)</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        @endif
+                    </div>
                     @endif
                 </div>
             </div>
