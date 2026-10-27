@@ -90,7 +90,7 @@ class FollowUpSequenceForm
                                             ->label('Tipe Pesan')
                                             ->options([
                                                 'template' => 'Teks Template Manual',
-                                                'ai_prompt' => '🧠 AI Gemini Smart Message',
+                                                'ai_prompt' => '🧠 9Router AI Smart Message',
                                             ])
                                             ->default('template')
                                             ->reactive()
@@ -102,7 +102,7 @@ class FollowUpSequenceForm
                                     ->visible(fn (Get $get) => $get('content_type') === 'template')
                                     ->rows(3),
                                 Textarea::make('ai_prompt')
-                                    ->label('Instruksi Gaya Bicara AI Gemini')
+                                    ->label('Instruksi Gaya Bicara 9Router AI')
                                     ->placeholder("Sapa {{name}}, tanyakan apakah ada kendala dengan tanggal keberangkatan, dan sebutkan sisa seat.")
                                     ->visible(fn (Get $get) => $get('content_type') === 'ai_prompt')
                                     ->rows(3),

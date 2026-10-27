@@ -95,7 +95,7 @@ class ChannelForm
                     ->schema([
                         Toggle::make('is_bot_enabled')
                             ->label('Aktifkan AI Chatbot Otomatis')
-                            ->helperText('Jika aktif, Google Gemini AI akan otomatis menjawab pesan/komentar masuk.')
+                            ->helperText('Jika aktif, 9Router AI akan otomatis menjawab pesan/komentar masuk.')
                             ->default(true),
 
                         Toggle::make('sync_groups')

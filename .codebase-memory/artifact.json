@@ -1,0 +1,11 @@
+{
+    "schema_version": 2,
+    "commit": "bb1cfad2b0d3895ecb911018857e82f6285491d5",
+    "indexed_at": "2026-10-27T08:59:32Z",
+    "project": "C-laragon-www-omnichannel-crm",
+    "nodes": 10766,
+    "edges": 54291,
+    "original_size": 33030144,
+    "compressed_size": 5486697,
+    "compression_level": 9
+}

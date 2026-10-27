@@ -40,6 +40,15 @@ return [
         'model' => 'gemini-3.1-flash-lite',
     ],
 
+    'nine_router' => [
+        'base_url' => env('NINEROUTER_BASE_URL', 'https://9router.zakyapps.my.id/v1'),
+        'key' => env('NINEROUTER_API_KEY'),
+        'model_free' => env('NINEROUTER_MODEL_FREE', 'chat-free'),
+        'model_fast' => env('NINEROUTER_MODEL_FAST', 'chat-fast'),
+        'model_vision' => env('NINEROUTER_MODEL_VISION', 'chat-vision'),
+        'timeout' => env('NINEROUTER_TIMEOUT', 30),
+    ],
+
     'meta' => [
         'app_id' => env('META_APP_ID'),
         'app_secret' => env('META_APP_SECRET'),

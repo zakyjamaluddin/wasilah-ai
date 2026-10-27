@@ -9,14 +9,14 @@ use App\Models\Conversation;
 use App\Models\Message;
 use App\Models\Office;
 use App\Services\ComposioService;
-use App\Services\GeminiAiService;
+use App\Services\NineRouterService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class ComposioWebhookController extends Controller
 {
-    public function handle(Request $request, ComposioService $composio, GeminiAiService $gemini)
+    public function handle(Request $request, ComposioService $composio, NineRouterService $nineRouter)
     {
         $payload = $request->all();
 
@@ -85,13 +85,13 @@ class ComposioWebhookController extends Controller
 
         // ROUTER EKSEKUSI
         if ($isFbMessage) {
-            $this->handleFacebookMessenger($data, $office, $composio, $gemini);
+            $this->handleFacebookMessenger($data, $office, $composio, $nineRouter);
         } elseif ($isFbComment) {
-            $this->handleFacebookComment($data, $office, $composio, $gemini);
+            $this->handleFacebookComment($data, $office, $composio, $nineRouter);
         } elseif ($isIgMessage) {
-            $this->handleInstagramDirectMessage($data, $office, $composio, $gemini);
+            $this->handleInstagramDirectMessage($data, $office, $composio, $nineRouter);
         } elseif ($isIgComment) {
-            $this->handleInstagramComment($data, $office, $composio, $gemini);
+            $this->handleInstagramComment($data, $office, $composio, $nineRouter);
         } else {
             Log::info("ℹ️ [Composio Webhook Event Dilewati] Trigger: {$triggerName}, App: {$appName}");
         }
@@ -114,7 +114,7 @@ class ComposioWebhookController extends Controller
     /**
      * 1. AUTO-REPLY MESSENGER DM (FACEBOOK)
      */
-    protected function handleFacebookMessenger(array $data, Office $office, ComposioService $composio, GeminiAiService $gemini)
+    protected function handleFacebookMessenger(array $data, Office $office, ComposioService $composio, NineRouterService $nineRouter)
     {
         // Ekstrak Page ID otomatis
         $pageId = $composio->getFacebookPageId($office);
@@ -172,8 +172,8 @@ class ComposioWebhookController extends Controller
             'external_message_id' => $messageId,
         ]);
 
-        // Generate Balasan AI Gemini Humanis
-        $aiReply = $gemini->generateReply($conversation);
+        // Generate Balasan 9Router AI Humanis
+        $aiReply = $nineRouter->generateReply($conversation);
 
         if ($aiReply) {
             // 🔥 Tembakkan Balasan ke Messenger via Composio
@@ -189,14 +189,14 @@ class ComposioWebhookController extends Controller
                 'message_body'        => $aiReply,
             ]);
 
-            $gemini->analyzeAndSummarizeLead($conversation);
+            $nineRouter->analyzeAndSummarizeLead($conversation);
         }
     }
 
     /**
      * 2. AUTO-REPLY KOMENTAR FACEBOOK
      */
-    protected function handleFacebookComment(array $data, Office $office, ComposioService $composio, GeminiAiService $gemini)
+    protected function handleFacebookComment(array $data, Office $office, ComposioService $composio, NineRouterService $nineRouter)
     {
         $commentId = $data['comment_id'] ?? $data['id'] ?? null;
         $userText = $data['message'] ?? $data['text'] ?? '';
@@ -230,7 +230,7 @@ class ComposioWebhookController extends Controller
             'message_body'    => "[Komentar FB]: {$userText}",
         ]);
 
-        $aiReply = $gemini->generateReply($conversation);
+        $aiReply = $nineRouter->generateReply($conversation);
 
         if ($aiReply) {
             $composio->replyFacebookComment($office, $commentId, $aiReply);
@@ -248,7 +248,7 @@ class ComposioWebhookController extends Controller
     /**
      * 3. AUTO-REPLY INSTAGRAM DM
      */
-    protected function handleInstagramDirectMessage(array $data, Office $office, ComposioService $composio, GeminiAiService $gemini)
+    protected function handleInstagramDirectMessage(array $data, Office $office, ComposioService $composio, NineRouterService $nineRouter)
     {
         $senderId = $data['sender']['id'] ?? $data['sender_id'] ?? $data['from']['id'] ?? null;
         $userText = $data['message']['text'] ?? $data['text'] ?? $data['message'] ?? '';
@@ -284,7 +284,7 @@ class ComposioWebhookController extends Controller
             'external_message_id' => $messageId,
         ]);
 
-        $aiReply = $gemini->generateReply($conversation);
+        $aiReply = $nineRouter->generateReply($conversation);
 
         if ($aiReply) {
             $composio->sendInstagramDm($office, (string)$senderId, $aiReply);
@@ -297,14 +297,14 @@ class ComposioWebhookController extends Controller
                 'message_body'        => $aiReply,
             ]);
 
-            $gemini->analyzeAndSummarizeLead($conversation);
+            $nineRouter->analyzeAndSummarizeLead($conversation);
         }
     }
 
     /**
      * 4. AUTO-REPLY INSTAGRAM KOMENTAR
      */
-    protected function handleInstagramComment(array $data, Office $office, ComposioService $composio, GeminiAiService $gemini)
+    protected function handleInstagramComment(array $data, Office $office, ComposioService $composio, NineRouterService $nineRouter)
     {
         $commentId = $data['comment_id'] ?? $data['id'] ?? null;
         $userText = $data['text'] ?? $data['message'] ?? '';
@@ -337,7 +337,7 @@ class ComposioWebhookController extends Controller
             'message_body'    => "[Komentar IG]: {$userText}",
         ]);
 
-        $aiReply = $gemini->generateReply($conversation);
+        $aiReply = $nineRouter->generateReply($conversation);
 
         if ($aiReply) {
             $composio->replyInstagramComment($office, $commentId, $aiReply);

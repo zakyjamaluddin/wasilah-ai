@@ -17,7 +17,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(\App\Services\NineRouterService::class, function () {
+            return new \App\Services\NineRouterService();
+        });
+        $this->app->alias(\App\Services\NineRouterService::class, \App\Services\GeminiAiService::class);
     }
 
     /**

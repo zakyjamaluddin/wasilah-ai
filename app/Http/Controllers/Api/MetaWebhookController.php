@@ -7,8 +7,8 @@ use App\Models\Channel;
 use App\Models\Contact;
 use App\Models\Conversation;
 use App\Models\Message;
-use App\Services\GeminiAiService;
 use App\Services\MetaGraphService;
+use App\Services\NineRouterService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -39,7 +39,7 @@ class MetaWebhookController extends Controller
     /**
      * 2. Penangkap Event DM & Komentar FB / IG (POST) ➡️ Dibalas Langsung oleh MetaGraphService
      */
-    public function handle(Request $request, MetaGraphService $meta, GeminiAiService $gemini)
+    public function handle(Request $request, MetaGraphService $meta, NineRouterService $nineRouter)
     {
         $body = $request->all();
         Log::info("=== [META INBOUND EVENT] ===");
@@ -153,7 +153,7 @@ class MetaWebhookController extends Controller
                             'unread_count'    => $conversation->unread_count + 1
                         ]);
 
-                        // 4. BALAS OTOMATIS OLEH AI GEMINI VIA METAGRAPHSERVICE
+                        // 4. BALAS OTOMATIS OLEH 9ROUTER AI VIA METAGRAPHSERVICE
                         if ($conversation->is_bot_active) {
                             $localImagePath = null;
                             if ($messageType === 'image' && $mediaUrl) {
@@ -161,7 +161,7 @@ class MetaWebhookController extends Controller
                                 $localImagePath = storage_path('app/public/' . $relativePath);
                             }
 
-                            $botReply = $gemini->generateReply($conversation, $localImagePath);
+                            $botReply = $nineRouter->generateReply($conversation, $localImagePath);
 
                             if ($botReply) {
                                 if ($object === 'instagram') {
@@ -179,7 +179,7 @@ class MetaWebhookController extends Controller
                                     'is_read'         => true,
                                 ]);
 
-                                $gemini->analyzeAndSummarizeLead($conversation);
+                                $nineRouter->analyzeAndSummarizeLead($conversation);
                             }
                         }
                     }
@@ -249,7 +249,7 @@ class MetaWebhookController extends Controller
                                 'unread_count'    => $conversation->unread_count + 1
                             ]);
 
-                            $aiReply = $gemini->generateReply($conversation);
+                            $aiReply = $nineRouter->generateReply($conversation);
                             if ($aiReply) {
                                 $meta->replyToFacebookComment($accessToken, $commentId, $aiReply);
 
@@ -308,7 +308,7 @@ class MetaWebhookController extends Controller
                                 'unread_count'    => $conversation->unread_count + 1
                             ]);
 
-                            $aiReply = $gemini->generateReply($conversation);
+                            $aiReply = $nineRouter->generateReply($conversation);
                             if ($aiReply) {
                                 $meta->replyToInstagramComment($accessToken, $commentId, $aiReply);
 

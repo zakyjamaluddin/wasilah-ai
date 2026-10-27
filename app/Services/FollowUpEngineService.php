@@ -101,12 +101,12 @@ class FollowUpEngineService
             $conv = $enr->conversation;
             if (!$contact || !$conv) continue;
 
-            // 🎯 1. SUSUN TEKS PESAN DENGAN AI GEMINI ATAU TEMPLATE
+            // 🎯 1. SUSUN TEKS PESAN DENGAN 9ROUTER AI ATAU TEMPLATE
             $messageText = '';
             if ($currentStep->content_type === 'ai_prompt' && !empty($currentStep->ai_prompt)) {
-                $gemini = app(GeminiAiService::class);
+                $nineRouter = app(NineRouterService::class);
                 // 🔥 Panggil fungsi AI Follow-Up Khusus dengan membawa instruksi admin
-                $messageText = $gemini->generateFollowUpMessage($conv, $currentStep->ai_prompt);
+                $messageText = $nineRouter->generateFollowUpMessage($conv, $currentStep->ai_prompt);
             }
 
             if (empty($messageText)) {

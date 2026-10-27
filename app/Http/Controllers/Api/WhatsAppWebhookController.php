@@ -140,7 +140,7 @@ class WhatsAppWebhookController extends Controller
             // Eksekusi AI jika pesan dari customer personal dan bot aktif
             if (!$isFromMe && $conversation->is_bot_active && !$isGroup) {
                 try {
-                    $gemini = app(\App\Services\GeminiAiService::class);
+                    $nineRouter = app(\App\Services\NineRouterService::class);
                     $baileys = app(\App\Services\BaileysService::class);
 
                     $localImagePath = null;
@@ -148,7 +148,7 @@ class WhatsAppWebhookController extends Controller
                         $localImagePath = storage_path('app/public/' . str_replace('/storage/', '', $mediaUrl));
                     }
 
-                    $botReply = $gemini->generateReply($conversation, $localImagePath);
+                    $botReply = $nineRouter->generateReply($conversation, $localImagePath);
                     if ($botReply) {
                         $botMessage = Message::create([
                             'conversation_id' => $conversation->id,
@@ -167,7 +167,7 @@ class WhatsAppWebhookController extends Controller
                             $botMessage->update(['external_message_id' => $res['data']['messageId']]);
                         }
 
-                        $gemini->analyzeAndSummarizeLead($conversation);
+                        $nineRouter->analyzeAndSummarizeLead($conversation);
                     }
                 } catch (\Exception $e) {}
             }
