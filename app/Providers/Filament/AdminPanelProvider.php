@@ -53,6 +53,7 @@ class AdminPanelProvider extends PanelProvider
             // 🔥 AKTIFKAN MULTI-TENANCY KANTOR
             ->tenant(Office::class, slugAttribute: 'slug')
             ->tenantMiddleware([
+                \BezhanSalleh\FilamentShield\Middleware\SyncShieldTenant::class,
                 CheckTenantSubscription::class, // 👈 Pasang satpam penjaga tenant di sini
             ], isPersistent: true)
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')

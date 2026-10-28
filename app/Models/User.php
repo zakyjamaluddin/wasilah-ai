@@ -87,6 +87,7 @@ class User extends Authenticatable implements FilamentUser, HasTenants
 
                 if (method_exists($user, 'assignRole')) {
                     try {
+                        setPermissionsTeamId($office->id);
                         $user->assignRole('admin');
                     } catch (\Throwable $e) {}
                 }
