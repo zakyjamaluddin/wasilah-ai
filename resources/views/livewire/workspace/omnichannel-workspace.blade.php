@@ -22,7 +22,7 @@
         <div class="w-full md:w-5/12 lg:w-3/12 flex-shrink-0 flex-col border-r border-slate-200/80 bg-white {{ $mobileView === 'list' ? 'flex' : 'hidden md:flex' }} h-full min-h-0 shadow-[2px_0_12px_-4px_rgba(0,0,0,0.03)] z-10">
 
             {{-- Header Atas Kolom 1: Tombol Kembali ke Panel Wasilah AI & Brand --}}
-            <div class="safe-pt-header flex items-center justify-between border-b border-slate-800 bg-slate-900 px-3.5 py-2.5 text-white shadow-xs">
+            <div class="safe-pt-header flex items-center justify-between border-b border-slate-800 bg-slate-900 px-3.5 pb-2.5 text-white shadow-xs">
                 <a href="{{ route('filament.admin.pages.dashboard', ['tenant' => $office->slug]) }}"
                    class="inline-flex items-center gap-1.5 rounded-xl bg-white/10 px-2.5 py-1.5 text-xs font-bold text-white hover:bg-white/20 active:scale-95 transition-all">
                     <svg class="h-4 w-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -177,7 +177,7 @@
                 @endphp
 
                 {{-- Room Header (Safe-top aware, elegan & responsif) --}}
-                <div class="safe-pt-header flex min-h-[3.75rem] flex-shrink-0 items-center justify-between border-b border-slate-200/80 bg-white/95 backdrop-blur-md px-3 sm:px-4 py-2.5 shadow-xs z-10 gap-2">
+                <div class="safe-pt-header flex min-h-[3.75rem] flex-shrink-0 items-center justify-between border-b border-slate-200/80 bg-white/95 backdrop-blur-md px-3 sm:px-4 pb-2.5 shadow-xs z-10 gap-2">
                     <div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                         {{-- Tombol Kembali ke Daftar Chat (Mobile) --}}
                         <button
@@ -326,7 +326,7 @@
                 @endif
 
                 {{-- INPUT BAR BOTTOM DOCK (Safe-bottom aware) --}}
-                <div class="safe-pb-input flex-shrink-0 border-t border-slate-100 bg-white p-2.5 sm:p-3.5">
+                <div class="safe-pb-input flex-shrink-0 border-t border-slate-100 bg-white px-3 pt-2.5 sm:p-3.5">
                     <form wire:submit.prevent="sendReply" class="flex items-center gap-2">
                         <label class="cursor-pointer rounded-xl p-2 text-slate-400 transition hover:bg-teal-50 hover:text-teal-600 flex-shrink-0">
                             <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
@@ -513,7 +513,7 @@
                 x-transition:leave-end="translate-x-full"
                 class="w-screen max-w-md bg-white shadow-2xl flex flex-col">
 
-                <div class="safe-pt-header flex items-center justify-between border-b border-slate-200 px-4 py-3.5 bg-slate-900 text-white">
+                <div class="safe-pt-header flex items-center justify-between border-b border-slate-200 px-4 pb-3.5 bg-slate-900 text-white">
                     <h3 class="text-sm font-bold text-white flex items-center gap-2">
                         <x-heroicon-s-sparkles class="w-4 h-4 text-amber-400" />
                         <span>Ringkasan & Info Leads</span>

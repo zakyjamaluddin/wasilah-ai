@@ -57,17 +57,36 @@
             --sal: env(safe-area-inset-left, 0px);
             --sar: env(safe-area-inset-right, 0px);
         }
-        .safe-top {
-            padding-top: max(0.75rem, env(safe-area-inset-top, 0px));
+        /* 🔥 KHUSUS LAYAR PONSEL (MOBILE): PADDING AMAN DARI TOPBAR PONSEL (BATERAI, JAM, SINYAL, NOTCH) */
+        @media (max-width: 767px) {
+            .safe-pt-header {
+                padding-top: max(3.5rem, calc(env(safe-area-inset-top, 0px) + 0.75rem)) !important;
+            }
+            .safe-top {
+                padding-top: max(3.5rem, calc(env(safe-area-inset-top, 0px) + 0.75rem)) !important;
+            }
+            .safe-pb-input {
+                padding-bottom: max(1.25rem, calc(env(safe-area-inset-bottom, 0px) + 0.5rem)) !important;
+            }
+            .safe-bottom {
+                padding-bottom: max(1.25rem, calc(env(safe-area-inset-bottom, 0px) + 0.5rem)) !important;
+            }
         }
-        .safe-bottom {
-            padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
-        }
-        .safe-pt-header {
-            padding-top: max(0.5rem, env(safe-area-inset-top, 0px));
-        }
-        .safe-pb-input {
-            padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+
+        /* 💻 LAYAR TABLET & DESKTOP: PADDING HEADER NORMAL & KOMPAK */
+        @media (min-width: 768px) {
+            .safe-pt-header {
+                padding-top: 0.75rem !important;
+            }
+            .safe-top {
+                padding-top: 0.75rem !important;
+            }
+            .safe-pb-input {
+                padding-bottom: 0.875rem !important;
+            }
+            .safe-bottom {
+                padding-bottom: 0.875rem !important;
+            }
         }
         ::-webkit-scrollbar { width: 5px; height: 5px; }
         ::-webkit-scrollbar-track { background: transparent; }
