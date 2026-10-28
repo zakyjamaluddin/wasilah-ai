@@ -12,7 +12,7 @@ class BaileysService
 
     public function __construct()
     {
-        $this->baseUrl = config('services.baileys.url', env('BAILEYS_API_URL', 'https://vps.wasilah-ai.my.id'));
+        $this->baseUrl = config('services.baileys.url', env('BAILEYS_API_URL', 'http://vps.wasilah-ai.my.id:3100'));
         $this->apiKey = config('services.baileys.key', env('BAILEYS_API_KEY', 'rahasia-super-aman-123'));
     }
 

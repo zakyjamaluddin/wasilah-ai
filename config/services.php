@@ -78,4 +78,9 @@ return [
         'redirect'      => env('GOOGLE_REDIRECT_URI', env('APP_URL') ? rtrim(env('APP_URL'), '/') . '/auth/google/callback' : 'https://wasilah-ai.my.id/auth/google/callback'),
     ],
 
+    'baileys' => [
+        'url' => env('BAILEYS_API_URL', 'http://vps.wasilah-ai.my.id:3100'),
+        'key' => env('BAILEYS_API_KEY', 'rahasia-super-aman-123'),
+    ],
+
 ];
