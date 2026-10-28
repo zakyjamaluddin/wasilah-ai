@@ -58,6 +58,33 @@ Route::post('/checkout/process', [CheckoutController::class, 'process'])->name('
 Route::get('/checkout/invoice/{invoice}', [CheckoutController::class, 'invoice'])->name('checkout.invoice');
 Route::post('/checkout/pay/{invoice}', [CheckoutController::class, 'pay'])->name('checkout.pay');
 
+// 🛠️ DIAGNOSIS KONEKSI KE BAILEYS VPS
+Route::get('/diag-baileys', function (\App\Services\BaileysService $baileys) {
+    $targetUrl = config('services.baileys.url');
+    $start = microtime(true);
+    try {
+        $client = $baileys->client(10);
+        $res = $client->get('/health');
+        $duration = round(microtime(true) - $start, 3);
+        return response()->json([
+            'success' => true,
+            'target_url' => $targetUrl,
+            'duration_seconds' => $duration,
+            'http_status' => $res->status(),
+            'body' => $res->json(),
+        ]);
+    } catch (\Throwable $e) {
+        $duration = round(microtime(true) - $start, 3);
+        return response()->json([
+            'success' => false,
+            'target_url' => $targetUrl,
+            'duration_seconds' => $duration,
+            'error_message' => $e->getMessage(),
+            'suggestion' => 'Jika error cURL timeout/refused, pastikan port 3100 diizinkan keluar oleh firewall hosting Anda atau Nginx me-reverse proxy port 3100.',
+        ], 500);
+    }
+});
+
 
 
 Route::get('/debug-composio', function (MetaGraphService $meta) {

@@ -47,11 +47,18 @@ class BaileysService
             if ($response->successful()) {
                 return $response->json() ?? [];
             }
-            return ['data' => ['status' => 'connecting', 'qrImage' => null]];
+            return [
+                'status' => 'error',
+                'message' => 'HTTP ' . $response->status() . ': ' . ($response->json('message') ?? $response->body() ?? 'Server Baileys merespon error.'),
+                'data' => ['status' => 'disconnected', 'qrImage' => null],
+            ];
         } catch (\Exception $e) {
-            // Jika VPS sedang sibuk enkripsi, kembalikan status connecting agar Livewire tidak error merah
-            Log::info("[Baileys getStatus Waiting] Sedang memproses enkripsi di VPS...");
-            return ['data' => ['status' => 'connecting', 'qrImage' => null]];
+            Log::warning("[Baileys getStatus Error] " . $e->getMessage());
+            return [
+                'status' => 'error',
+                'message' => 'Koneksi ke VPS Baileys gagal: ' . $e->getMessage(),
+                'data' => ['status' => 'disconnected', 'qrImage' => null],
+            ];
         }
     }
 
