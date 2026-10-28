@@ -66,23 +66,14 @@ class OfficesTable
                     ->modalHeading(fn (Office $record) => 'Undang Pengelola: ' . $record->name)
                     ->modalDescription('Bagikan tautan ini kepada calon pengelola atau staf. Pengguna cukup membuka tautan dan signup dengan Google untuk otomatis mendapatkan akses pengelola (Admin) di kantor ini.')
                     ->modalIcon('heroicon-o-link')
+                    ->fillForm(fn (Office $record): array => [
+                        'invitation_url' => $record->getInvitationUrl(),
+                    ])
                     ->form([
                         TextInput::make('invitation_url')
                             ->label('Tautan Undangan Khusus')
-                            ->default(fn (Office $record) => $record->getInvitationUrl())
                             ->readOnly()
-                            ->suffixAction(
-                                \Filament\Forms\Components\Actions\Action::make('copy')
-                                    ->icon('heroicon-m-clipboard-document')
-                                    ->tooltip('Salin tautan')
-                                    ->action(function ($livewire, $state) {
-                                        $livewire->js("window.navigator.clipboard.writeText(" . json_encode($state) . ")");
-                                        Notification::make()
-                                            ->title('Tautan undangan berhasil disalin!')
-                                            ->success()
-                                            ->send();
-                                    })
-                            )
+                            ->copyable(copyMessage: 'Tautan undangan berhasil disalin!')
                             ->helperText('Klik ikon salin di sisi kanan input untuk menyalin tautan.'),
                     ])
                     ->modalSubmitAction(false)
