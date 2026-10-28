@@ -136,6 +136,14 @@ class AdminPanelProvider extends PanelProvider
                     // }),
             ])
             ->renderHook(
+                PanelsRenderHook::HEAD_END,
+                fn () => view('filament.components.pwa-head')
+            )
+            ->renderHook(
+                PanelsRenderHook::SIDEBAR_FOOTER,
+                fn () => view('filament.components.pwa-install-button')
+            )
+            ->renderHook(
                 PanelsRenderHook::PAGE_START,
                 fn () => view('filament.components.subscription-banner')
             )
