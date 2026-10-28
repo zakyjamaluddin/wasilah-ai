@@ -16,7 +16,7 @@ class BaileysService
         $this->apiKey = config('services.baileys.key', env('BAILEYS_API_KEY', 'rahasia-super-aman-123'));
     }
 
-    public function client()
+    public function client(int $timeout = 15)
     {
         return Http::baseUrl($this->baseUrl)
             ->withHeaders([
@@ -24,8 +24,8 @@ class BaileysService
                 'Content-Type' => 'application/json',
                 'Accept' => 'application/json',
             ])
-            ->timeout(8)       // Batas tunggu 8 detik
-            ->connectTimeout(5); // Batas koneksi 5 detik
+            ->timeout($timeout)       // Batas tunggu (default 15 detik untuk antar server beda VPS)
+            ->connectTimeout(7);      // Batas koneksi 7 detik
     }
 
     // 1. Inisialisasi Session
@@ -84,7 +84,7 @@ class BaileysService
     public function sendMediaMessage(string $sessionId, string $to, string $mediaBase64, ?string $caption = null, string $mimeType = 'image/jpeg', ?string $fileName = null)
     {
         try {
-            return $this->client()->post('/api/message/send-media', [
+            return $this->client(35)->post('/api/message/send-media', [
                 'sessionId' => $sessionId,
                 'to' => $to,
                 'media' => $mediaBase64,
@@ -132,7 +132,7 @@ class BaileysService
     public function dispatchBroadcast(string $sessionId, array $recipients, string $message, ?string $mediaUrl = null)
     {
         try {
-            return $this->client()->post('/api/broadcast/dispatch', [
+            return $this->client(35)->post('/api/broadcast/dispatch', [
                 'sessionId' => $sessionId,
                 'recipients' => $recipients,
                 'message' => $message,
