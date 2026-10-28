@@ -71,8 +71,18 @@ class OfficesTable
                             ->label('Tautan Undangan Khusus')
                             ->default(fn (Office $record) => $record->getInvitationUrl())
                             ->readOnly()
-                            ->copyable()
-                            ->copyMessage('Tautan undangan berhasil disalin!')
+                            ->suffixAction(
+                                \Filament\Forms\Components\Actions\Action::make('copy')
+                                    ->icon('heroicon-m-clipboard-document')
+                                    ->tooltip('Salin tautan')
+                                    ->action(function ($livewire, $state) {
+                                        $livewire->js("window.navigator.clipboard.writeText(" . json_encode($state) . ")");
+                                        Notification::make()
+                                            ->title('Tautan undangan berhasil disalin!')
+                                            ->success()
+                                            ->send();
+                                    })
+                            )
                             ->helperText('Klik ikon salin di sisi kanan input untuk menyalin tautan.'),
                     ])
                     ->modalSubmitAction(false)

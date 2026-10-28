@@ -111,8 +111,18 @@ class OfficeForm
                                     ->label('Tautan Undangan Aktif')
                                     ->default(fn (?Office $record) => $record?->getInvitationUrl() ?: 'Simpan kantor terlebih dahulu untuk menghasilkan tautan undangan.')
                                     ->readOnly()
-                                    ->copyable()
-                                    ->copyMessage('Tautan undangan berhasil disalin!')
+                                    ->suffixAction(
+                                        \Filament\Forms\Components\Actions\Action::make('copy')
+                                            ->icon('heroicon-m-clipboard-document')
+                                            ->tooltip('Salin tautan')
+                                            ->action(function ($livewire, $state) {
+                                                $livewire->js("window.navigator.clipboard.writeText(" . json_encode($state) . ")");
+                                                \Filament\Notifications\Notification::make()
+                                                    ->title('Tautan undangan berhasil disalin!')
+                                                    ->success()
+                                                    ->send();
+                                            })
+                                    )
                                     ->columnSpanFull()
                                     ->helperText('Klik ikon salin di sisi kanan untuk menyalin tautan undangan.'),
                             ])
