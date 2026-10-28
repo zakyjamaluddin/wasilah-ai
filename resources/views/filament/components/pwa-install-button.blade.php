@@ -1,3 +1,86 @@
+<style>
+    .fi-sidebar-pwa-container {
+        margin-top: auto !important;
+        position: sticky !important;
+        bottom: 0 !important;
+        z-index: 25 !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        padding: 10px 12px !important;
+        background: #ffffff !important;
+        border-top: 1px solid #e2e8f0 !important;
+    }
+    .dark .fi-sidebar-pwa-container {
+        background: #111827 !important;
+        border-top-color: rgba(255, 255, 255, 0.1) !important;
+    }
+    .fi-pwa-btn {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        width: 100% !important;
+        padding: 8px 10px !important;
+        border-radius: 12px !important;
+        background: linear-gradient(135deg, #0f766e 0%, #059669 100%) !important;
+        color: #ffffff !important;
+        border: none !important;
+        cursor: pointer !important;
+        box-shadow: 0 4px 12px rgba(15, 118, 110, 0.28) !important;
+        text-align: left !important;
+        text-decoration: none !important;
+        box-sizing: border-box !important;
+        gap: 8px !important;
+        transition: transform 0.15s ease, filter 0.15s ease !important;
+    }
+    .fi-pwa-btn:hover {
+        filter: brightness(1.05) !important;
+        transform: translateY(-1px) !important;
+    }
+    .fi-pwa-btn:active {
+        transform: translateY(1px) !important;
+    }
+    .fi-pwa-compact-btn {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 36px !important;
+        height: 36px !important;
+        min-width: 36px !important;
+        min-height: 36px !important;
+        max-width: 36px !important;
+        max-height: 36px !important;
+        margin: 0 auto !important;
+        border-radius: 10px !important;
+        background: linear-gradient(135deg, #0f766e 0%, #059669 100%) !important;
+        color: #ffffff !important;
+        border: none !important;
+        cursor: pointer !important;
+        box-shadow: 0 4px 12px rgba(15, 118, 110, 0.28) !important;
+        transition: transform 0.15s ease, filter 0.15s ease !important;
+    }
+    .fi-pwa-compact-btn:hover {
+        filter: brightness(1.08) !important;
+        transform: scale(1.06) !important;
+    }
+    .dark .fi-pwa-modal-card {
+        background: #1f2937 !important;
+        color: #f3f4f6 !important;
+    }
+    .dark .fi-pwa-modal-title {
+        color: #ffffff !important;
+    }
+    .dark .fi-pwa-modal-desc {
+        color: #9ca3af !important;
+    }
+    .dark .fi-pwa-step-card {
+        background: rgba(255, 255, 255, 0.05) !important;
+        color: #f3f4f6 !important;
+    }
+    .dark .fi-pwa-step-card p {
+        color: #d1d5db !important;
+    }
+</style>
+
 <div
     x-data="{
         deferredPrompt: null,
@@ -14,7 +97,7 @@
                 this.isInstalled = true;
             }
 
-            // Deteksi platform iOS
+            // Deteksi platform iOS (Safari)
             const ua = window.navigator.userAgent.toLowerCase();
             this.isIos = /iphone|ipad|ipod/.test(ua) && !window.MSStream;
 
@@ -69,17 +152,17 @@
             }
         }
     }"
-    class="fi-sidebar-pwa-sticky sticky bottom-0 z-20 w-full border-t border-gray-200/80 bg-white/95 px-3 py-3 backdrop-blur-md dark:border-white/10 dark:bg-gray-900/95"
+    class="fi-sidebar-pwa-container"
 >
     {{-- ========================================================================= --}}
     {{-- TAMPILAN JIKA SUDAH TERPASANG                                             --}}
     {{-- ========================================================================= --}}
     <template x-if="isInstalled">
-        <div class="flex items-center gap-2 rounded-xl bg-emerald-50/80 px-3 py-2 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
-            <svg class="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div style="display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 10px; background: rgba(16, 185, 129, 0.12); color: #047857; font-size: 11px; font-weight: 700; width: 100%; box-sizing: border-box;">
+            <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 15px; height: 15px; flex-shrink: 0; display: block;">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
             </svg>
-            <span x-show="$store.sidebar.isOpen" class="truncate">Aplikasi Terpasang</span>
+            <span x-show="$store.sidebar.isOpen" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Aplikasi Terpasang</span>
         </div>
     </template>
 
@@ -87,41 +170,38 @@
     {{-- TOMBOL INSTALL AKTIF (KETIKA BELUM TERPASANG)                             --}}
     {{-- ========================================================================= --}}
     <template x-if="!isInstalled">
-        <div>
+        <div style="width: 100%;">
             {{-- Versi Sidebar Terbuka / Expanded --}}
-            <div x-show="$store.sidebar.isOpen" class="transition-all">
+            <div x-show="$store.sidebar.isOpen" style="width: 100%;">
                 <button
                     type="button"
                     @click="triggerInstall()"
-                    class="group relative flex w-full items-center justify-between gap-3 overflow-hidden rounded-xl bg-gradient-to-r from-teal-600 via-emerald-600 to-teal-700 p-2.5 text-left text-white shadow-md shadow-emerald-700/20 transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-emerald-700/30 active:scale-[0.98] cursor-pointer"
+                    class="fi-pwa-btn"
                     title="Install Wasilah AI PWA di Windows, Android, atau iOS"
                 >
-                    {{-- Shimmer Effect --}}
-                    <div class="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-1000 group-hover:translate-x-full"></div>
-
-                    <div class="flex items-center gap-2.5 min-w-0">
+                    <div style="display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1 1 0%;">
                         {{-- Icon PWA (Favicon Mini Squircle) --}}
-                        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/20 backdrop-blur-xs ring-1 ring-white/30 shadow-xs">
-                            <svg class="h-5 w-5" viewBox="0 0 100 100">
+                        <div style="display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; min-width: 32px; min-height: 32px; max-width: 32px; max-height: 32px; border-radius: 8px; background: rgba(255, 255, 255, 0.22); overflow: hidden; flex-shrink: 0;">
+                            <svg width="20" height="20" viewBox="0 0 100 100" style="width: 20px; height: 20px; min-width: 20px; min-height: 20px; max-width: 20px; max-height: 20px; display: block;">
                                 <rect width="100" height="100" rx="28" fill="#0f766e" />
                                 <path d="M55 16L24 55h24l-7 29 35-39H50l5-29z" fill="#fcd34d" stroke="#f59e0b" stroke-width="2" />
                             </svg>
                         </div>
 
-                        <div class="min-w-0">
-                            <div class="flex items-center gap-1.5">
-                                <span class="truncate text-xs font-black tracking-wide uppercase text-white">Install Aplikasi</span>
-                                <span class="rounded bg-white/25 px-1 py-0.2 text-[9px] font-extrabold uppercase tracking-wider text-amber-200">PWA</span>
+                        <div style="min-width: 0; flex: 1 1 0%; display: flex; flex-direction: column;">
+                            <div style="display: flex; align-items: center; gap: 5px;">
+                                <span style="font-size: 11px; font-weight: 800; letter-spacing: 0.03em; text-transform: uppercase; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2;">Install Aplikasi</span>
+                                <span style="background: rgba(255, 255, 255, 0.25); color: #fef08a; font-size: 8px; font-weight: 900; padding: 1px 4px; border-radius: 4px; text-transform: uppercase; line-height: 1; flex-shrink: 0;">PWA</span>
                             </div>
-                            <p class="truncate text-[10px] font-medium text-emerald-100">
+                            <span style="font-size: 9px; color: rgba(204, 251, 241, 0.9); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2;">
                                 Windows &bull; Android &bull; iOS
-                            </p>
+                            </span>
                         </div>
                     </div>
 
                     {{-- Download Arrow Badge --}}
-                    <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white text-emerald-700 shadow-sm transition-transform group-hover:translate-y-0.5">
-                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div style="display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; min-width: 24px; min-height: 24px; max-width: 24px; max-height: 24px; border-radius: 6px; background: #ffffff; color: #0f766e; flex-shrink: 0; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
+                        <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 13px; height: 13px; min-width: 13px; min-height: 13px; max-width: 13px; max-height: 13px; display: block;">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
                         </svg>
                     </div>
@@ -129,14 +209,14 @@
             </div>
 
             {{-- Versi Sidebar Tertutup / Collapsed (Desktop Mini Mode) --}}
-            <div x-show="!$store.sidebar.isOpen" class="flex justify-center transition-all">
+            <div x-show="!$store.sidebar.isOpen" style="display: flex; justify-content: center; width: 100%;">
                 <button
                     type="button"
                     @click="triggerInstall()"
-                    class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 text-white shadow-md shadow-emerald-600/20 hover:scale-110 active:scale-95 transition-all cursor-pointer"
+                    class="fi-pwa-compact-btn"
                     title="Install Aplikasi Wasilah AI (PWA)"
                 >
-                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg width="17" height="17" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 17px; height: 17px; min-width: 17px; min-height: 17px; max-width: 17px; max-height: 17px; display: block;">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
                     </svg>
                 </button>
@@ -150,54 +230,48 @@
     <div
         x-show="showIosModal"
         x-cloak
-        class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 p-4 backdrop-blur-xs transition-opacity"
+        style="position: fixed; inset: 0; z-index: 99999; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.65); backdrop-filter: blur(4px); padding: 16px; box-sizing: border-box;"
         @click.self="showIosModal = false"
     >
         <div
-            x-show="showIosModal"
-            x-transition:enter="transition ease-out duration-300 transform"
-            x-transition:enter-start="opacity-0 translate-y-8 sm:scale-95"
-            x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
-            x-transition:leave="transition ease-in duration-200 transform"
-            x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
-            x-transition:leave-end="opacity-0 translate-y-8 sm:scale-95"
-            class="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl dark:bg-gray-900 text-slate-800 dark:text-slate-100"
+            class="fi-pwa-modal-card"
+            style="background: #ffffff; color: #1e293b; border-radius: 20px; padding: 22px; max-width: 380px; width: 100%; box-shadow: 0 20px 40px rgba(0,0,0,0.3); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; box-sizing: border-box;"
         >
-            <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-white/10">
-                <div class="flex items-center gap-3">
-                    <img src="/icons/icon-192.png" alt="Wasilah AI" class="h-10 w-10 rounded-2xl shadow-md shadow-emerald-600/20" />
+            <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 12px; border-bottom: 1px solid #e2e8f0;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <img src="/icons/icon-192.png" alt="Wasilah AI" style="width: 36px; height: 36px; border-radius: 10px; display: block;" />
                     <div>
-                        <h3 class="text-sm font-extrabold text-slate-900 dark:text-white">Pasang di Layar Utama</h3>
-                        <p class="text-xs text-slate-500 dark:text-slate-400">Khusus iPhone & iPad (Safari)</p>
+                        <h3 class="fi-pwa-modal-title" style="font-size: 14px; font-weight: 800; margin: 0; color: #0f172a;">Pasang di Layar Utama</h3>
+                        <p class="fi-pwa-modal-desc" style="font-size: 11px; color: #64748b; margin: 2px 0 0 0;">Khusus iPhone & iPad (Safari)</p>
                     </div>
                 </div>
-                <button @click="showIosModal = false" class="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10">
-                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                <button @click="showIosModal = false" style="background: none; border: none; cursor: pointer; color: #94a3b8; padding: 4px; display: flex; align-items: center;">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
             </div>
 
-            <div class="mt-4 space-y-3.5 text-xs">
-                <div class="flex items-start gap-3 rounded-2xl bg-slate-50 p-3 dark:bg-white/5">
-                    <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-teal-100 text-teal-800 font-black text-xs dark:bg-teal-900 dark:text-teal-200">1</div>
+            <div style="margin-top: 14px; display: flex; flex-direction: column; gap: 10px; font-size: 12px;">
+                <div class="fi-pwa-step-card" style="display: flex; align-items: flex-start; gap: 10px; border-radius: 12px; background: #f8fafc; padding: 10px 12px;">
+                    <div style="width: 22px; height: 22px; min-width: 22px; border-radius: 6px; background: #ccfbf1; color: #0f766e; font-weight: 900; font-size: 11px; display: flex; align-items: center; justify-content: center;">1</div>
                     <div>
-                        <p class="font-bold text-slate-900 dark:text-white">Ketuk Ikon Bagikan (Share)</p>
-                        <p class="text-slate-500 dark:text-slate-400 mt-0.5">Ketuk tombol <strong class="inline-flex items-center text-teal-600">Share <svg class="inline h-3.5 w-3.5 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg></strong> di bilah navigasi bawah Safari.</p>
+                        <strong style="color: #0f172a; display: block;">Ketuk Ikon Bagikan (Share)</strong>
+                        <p style="color: #64748b; margin: 2px 0 0 0; font-size: 11px;">Ketuk tombol <strong>Share</strong> (ikon kotak panah ke atas) di bilah bawah Safari.</p>
                     </div>
                 </div>
 
-                <div class="flex items-start gap-3 rounded-2xl bg-slate-50 p-3 dark:bg-white/5">
-                    <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-teal-100 text-teal-800 font-black text-xs dark:bg-teal-900 dark:text-teal-200">2</div>
+                <div class="fi-pwa-step-card" style="display: flex; align-items: flex-start; gap: 10px; border-radius: 12px; background: #f8fafc; padding: 10px 12px;">
+                    <div style="width: 22px; height: 22px; min-width: 22px; border-radius: 6px; background: #ccfbf1; color: #0f766e; font-weight: 900; font-size: 11px; display: flex; align-items: center; justify-content: center;">2</div>
                     <div>
-                        <p class="font-bold text-slate-900 dark:text-white">Pilih "Tambahkan ke Layar Utama"</p>
-                        <p class="text-slate-500 dark:text-slate-400 mt-0.5">Gulir ke bawah pada menu pop-up, lalu ketuk opsi <strong>"Add to Home Screen"</strong>.</p>
+                        <strong style="color: #0f172a; display: block;">Pilih "Tambahkan ke Layar Utama"</strong>
+                        <p style="color: #64748b; margin: 2px 0 0 0; font-size: 11px;">Gulir ke bawah pada menu pop-up, lalu ketuk opsi <strong>"Add to Home Screen"</strong>.</p>
                     </div>
                 </div>
 
-                <div class="flex items-start gap-3 rounded-2xl bg-slate-50 p-3 dark:bg-white/5">
-                    <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-teal-100 text-teal-800 font-black text-xs dark:bg-teal-900 dark:text-teal-200">3</div>
+                <div class="fi-pwa-step-card" style="display: flex; align-items: flex-start; gap: 10px; border-radius: 12px; background: #f8fafc; padding: 10px 12px;">
+                    <div style="width: 22px; height: 22px; min-width: 22px; border-radius: 6px; background: #ccfbf1; color: #0f766e; font-weight: 900; font-size: 11px; display: flex; align-items: center; justify-content: center;">3</div>
                     <div>
-                        <p class="font-bold text-slate-900 dark:text-white">Ketuk "Tambah" (Add)</p>
-                        <p class="text-slate-500 dark:text-slate-400 mt-0.5">Ketuk tombol <strong>Tambah</strong> di sudut kanan atas untuk menyelesaikan instalasi.</p>
+                        <strong style="color: #0f172a; display: block;">Ketuk "Tambah" (Add)</strong>
+                        <p style="color: #64748b; margin: 2px 0 0 0; font-size: 11px;">Ketuk tombol <strong>Tambah</strong> di sudut kanan atas untuk menyelesaikan instalasi.</p>
                     </div>
                 </div>
             </div>
@@ -205,7 +279,7 @@
             <button
                 type="button"
                 @click="showIosModal = false"
-                class="mt-5 w-full rounded-xl bg-slate-900 py-3 text-center text-xs font-bold text-white transition hover:bg-slate-800 dark:bg-teal-600 dark:hover:bg-teal-500"
+                style="margin-top: 18px; width: 100%; border-radius: 10px; background: #0f766e; color: #ffffff; padding: 10px; font-size: 12px; font-weight: 700; border: none; cursor: pointer; box-shadow: 0 4px 12px rgba(15, 118, 110, 0.3);"
             >
                 Saya Mengerti
             </button>
@@ -218,43 +292,37 @@
     <div
         x-show="showDesktopModal"
         x-cloak
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs transition-opacity"
+        style="position: fixed; inset: 0; z-index: 99999; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.65); backdrop-filter: blur(4px); padding: 16px; box-sizing: border-box;"
         @click.self="showDesktopModal = false"
     >
         <div
-            x-show="showDesktopModal"
-            x-transition:enter="transition ease-out duration-300 transform"
-            x-transition:enter-start="opacity-0 scale-95"
-            x-transition:enter-end="opacity-100 scale-100"
-            x-transition:leave="transition ease-in duration-200 transform"
-            x-transition:leave-start="opacity-100 scale-100"
-            x-transition:leave-end="opacity-0 scale-95"
-            class="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl dark:bg-gray-900 text-slate-800 dark:text-slate-100"
+            class="fi-pwa-modal-card"
+            style="background: #ffffff; color: #1e293b; border-radius: 20px; padding: 22px; max-width: 380px; width: 100%; box-shadow: 0 20px 40px rgba(0,0,0,0.3); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; box-sizing: border-box;"
         >
-            <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-white/10">
-                <div class="flex items-center gap-3">
-                    <img src="/icons/icon-192.png" alt="Wasilah AI" class="h-10 w-10 rounded-2xl shadow-md shadow-emerald-600/20" />
+            <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 12px; border-bottom: 1px solid #e2e8f0;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <img src="/icons/icon-192.png" alt="Wasilah AI" style="width: 36px; height: 36px; border-radius: 10px; display: block;" />
                     <div>
-                        <h3 class="text-sm font-extrabold text-slate-900 dark:text-white">Pasang Aplikasi PWA</h3>
-                        <p class="text-xs text-slate-500 dark:text-slate-400">Windows, Chrome & Android</p>
+                        <h3 class="fi-pwa-modal-title" style="font-size: 14px; font-weight: 800; margin: 0; color: #0f172a;">Pasang Aplikasi PWA</h3>
+                        <p class="fi-pwa-modal-desc" style="font-size: 11px; color: #64748b; margin: 2px 0 0 0;">Windows, Chrome & Android</p>
                     </div>
                 </div>
-                <button @click="showDesktopModal = false" class="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10">
-                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                <button @click="showDesktopModal = false" style="background: none; border: none; cursor: pointer; color: #94a3b8; padding: 4px; display: flex; align-items: center;">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
             </div>
 
-            <div class="mt-4 space-y-3.5 text-xs">
-                <div class="rounded-2xl bg-teal-50/70 p-3.5 dark:bg-teal-950/30 text-teal-900 dark:text-teal-200">
-                    <p class="font-bold">🖥️ Untuk Komputer Windows / Mac:</p>
-                    <p class="text-slate-600 dark:text-slate-300 mt-1">
+            <div style="margin-top: 14px; display: flex; flex-direction: column; gap: 10px; font-size: 12px;">
+                <div class="fi-pwa-step-card" style="border-radius: 12px; background: #f0fdfa; padding: 12px; border-left: 3px solid #0f766e;">
+                    <strong style="color: #0f766e; display: block; font-size: 12px;">🖥️ Untuk Komputer Windows / Mac:</strong>
+                    <p style="color: #475569; margin: 4px 0 0 0; font-size: 11px; line-height: 1.5;">
                         Klik ikon <strong>Install (Komputer kecil dengan panah bawah)</strong> di ujung kanan bilah alamat (URL bar) browser Chrome / Edge Anda.
                     </p>
                 </div>
 
-                <div class="rounded-2xl bg-emerald-50/70 p-3.5 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-200">
-                    <p class="font-bold">📱 Untuk HP Android:</p>
-                    <p class="text-slate-600 dark:text-slate-300 mt-1">
+                <div class="fi-pwa-step-card" style="border-radius: 12px; background: #ecfdf5; padding: 12px; border-left: 3px solid #059669;">
+                    <strong style="color: #059669; display: block; font-size: 12px;">📱 Untuk HP Android:</strong>
+                    <p style="color: #475569; margin: 4px 0 0 0; font-size: 11px; line-height: 1.5;">
                         Ketuk menu <strong>titik tiga (⋮)</strong> di pojok kanan atas browser &rarr; pilih <strong>"Install aplikasi"</strong> atau <strong>"Tambahkan ke Layar Utama"</strong>.
                     </p>
                 </div>
@@ -263,7 +331,7 @@
             <button
                 type="button"
                 @click="showDesktopModal = false"
-                class="mt-5 w-full rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 py-3 text-center text-xs font-bold text-white transition hover:opacity-95 shadow-md shadow-emerald-600/20 cursor-pointer"
+                style="margin-top: 18px; width: 100%; border-radius: 10px; background: linear-gradient(135deg, #0f766e 0%, #059669 100%); color: #ffffff; padding: 10px; font-size: 12px; font-weight: 700; border: none; cursor: pointer; box-shadow: 0 4px 12px rgba(15, 118, 110, 0.3);"
             >
                 Tutup Panduan
             </button>
