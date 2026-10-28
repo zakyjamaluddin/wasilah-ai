@@ -50,6 +50,7 @@ class AdminPanelProvider extends PanelProvider
                 Dashboard::class,
             ])
             ->globalSearch(false)
+            ->resourceCreatePageRedirect('index')
             // 🔥 AKTIFKAN MULTI-TENANCY KANTOR
             ->tenant(Office::class, slugAttribute: 'slug')
             ->tenantMiddleware([
