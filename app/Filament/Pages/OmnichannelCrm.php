@@ -41,7 +41,7 @@ class OmnichannelCrm extends Page
                 ->group(static::getNavigationGroup())
                 ->icon(static::getNavigationIcon())
                 ->sort(static::getNavigationSort())
-                ->url(route('workspace.crm', ['office' => $office->slug]), shouldOpenInNewTab: true),
+                ->url(route('workspace.crm', ['office' => $office->slug]), shouldOpenInNewTab: false),
         ];
     }
 

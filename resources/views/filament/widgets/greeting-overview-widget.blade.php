@@ -81,11 +81,10 @@
             </div>
 
             {{-- Tombol Emas Langsung ke Workspace Fullscreen --}}
-            {{-- Tombol Emas Langsung ke Workspace dengan Heroicons --}}
             <div style="flex-shrink: 0;">
-                <a href="{{ $workspaceUrl }}" target="_blank" class="luxury-gold-btn">
+                <a href="{{ $workspaceUrl }}" class="luxury-gold-btn">
                     <span>Buka OmniChat Workspace</span>
-                    <x-heroicon-o-arrow-top-right-on-square style="width: 1rem; height: 1rem; stroke-width: 2.5;" />
+                    <x-heroicon-o-arrow-right style="width: 1rem; height: 1rem; stroke-width: 2.5;" />
                 </a>
             </div>
 

@@ -51,10 +51,31 @@
         }
     </script>
     <style>
+        :root {
+            --sat: env(safe-area-inset-top, 0px);
+            --sab: env(safe-area-inset-bottom, 0px);
+            --sal: env(safe-area-inset-left, 0px);
+            --sar: env(safe-area-inset-right, 0px);
+        }
+        .safe-top {
+            padding-top: max(0.75rem, env(safe-area-inset-top, 0px));
+        }
+        .safe-bottom {
+            padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+        }
+        .safe-pt-header {
+            padding-top: max(0.5rem, env(safe-area-inset-top, 0px));
+        }
+        .safe-pb-input {
+            padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+        }
         ::-webkit-scrollbar { width: 5px; height: 5px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .touch-scroll {
+            -webkit-overflow-scrolling: touch;
+        }
     </style>
     @livewireStyles
 </head>

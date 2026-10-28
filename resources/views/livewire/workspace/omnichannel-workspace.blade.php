@@ -9,7 +9,7 @@
          }
      }"
      x-init="scrollToBottom()"
-     class="flex h-screen w-screen flex-col overflow-hidden bg-white text-slate-800 antialiased font-sans">
+     class="flex h-full min-h-[100dvh] w-screen flex-col overflow-hidden bg-white text-slate-800 antialiased font-sans">
 
     {{-- ========================================================================= --}}
     {{-- 3-COLUMN MAIN WORKSPACE                                                   --}}
@@ -21,17 +21,38 @@
         {{-- ========================================================================= --}}
         <div class="w-full md:w-5/12 lg:w-3/12 flex-shrink-0 flex-col border-r border-slate-200/80 bg-white {{ $mobileView === 'list' ? 'flex' : 'hidden md:flex' }} h-full min-h-0 shadow-[2px_0_12px_-4px_rgba(0,0,0,0.03)] z-10">
 
+            {{-- Header Atas Kolom 1: Tombol Kembali ke Panel Wasilah AI & Brand --}}
+            <div class="safe-pt-header flex items-center justify-between border-b border-slate-800 bg-slate-900 px-3.5 py-2.5 text-white shadow-xs">
+                <a href="{{ route('filament.admin.pages.dashboard', ['tenant' => $office->slug]) }}"
+                   class="inline-flex items-center gap-1.5 rounded-xl bg-white/10 px-2.5 py-1.5 text-xs font-bold text-white hover:bg-white/20 active:scale-95 transition-all">
+                    <svg class="h-4 w-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                    </svg>
+                    <span>Panel Wasilah</span>
+                </a>
+
+                <div class="flex items-center gap-2">
+                    <div class="text-right">
+                        <div class="flex items-center gap-1.5 justify-end">
+                            <span class="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                            <span class="text-xs font-black tracking-wide text-white uppercase">OmniChat</span>
+                        </div>
+                        <p class="text-[10px] text-slate-300 font-medium truncate max-w-[120px]">{{ $office->name }}</p>
+                    </div>
+                </div>
+            </div>
+
             {{-- Search Bar & Tombol Chat Baru (+) --}}
-            <div class="space-y-3 border-b border-slate-100 p-3.5 bg-slate-50/50">
+            <div class="space-y-2.5 border-b border-slate-100 p-3 bg-slate-50/70">
                 <div class="flex items-center gap-2">
                     <div class="relative flex-1">
                         <input
                             type="text"
                             wire:model.live.debounce.300ms="searchQuery"
                             placeholder="Cari kontak, nomor, @username..."
-                            class="w-full rounded-xl border border-slate-200/90 bg-white py-2.5 pl-9 pr-3.5 text-xs text-slate-800 placeholder-slate-400 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 transition-all shadow-xs"
+                            class="w-full rounded-xl border border-slate-200/90 bg-white py-2 pl-9 pr-3 text-xs text-slate-800 placeholder-slate-400 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 transition-all shadow-xs"
                         />
-                        <svg class="absolute left-3 top-3 h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="absolute left-3 top-2.5 h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                         </svg>
                     </div>
@@ -40,9 +61,9 @@
                     <button
                         wire:click="openNewChatModal"
                         title="Mulai Chat Baru"
-                        class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 text-white shadow-md shadow-emerald-600/20 hover:scale-105 active:scale-95 transition-all flex-shrink-0 cursor-pointer"
+                        class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 text-white shadow-md shadow-emerald-600/20 hover:scale-105 active:scale-95 transition-all flex-shrink-0 cursor-pointer"
                     >
-                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
                     </button>
                 </div>
 
@@ -155,38 +176,78 @@
                     $headerAvatarBg = $this->getAvatarColor($activeContactName);
                 @endphp
 
-                {{-- Room Header --}}
-                <div class="flex h-16 flex-shrink-0 items-center justify-between border-b border-slate-100 bg-white/90 backdrop-blur-md px-3.5 md:px-5 shadow-xs z-10">
-                    <div class="flex items-center gap-3">
-                        <button wire:click="backToMobileList" class="md:hidden p-2 -ml-1 text-slate-600 hover:bg-slate-100 rounded-xl transition cursor-pointer">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"></path></svg>
+                {{-- Room Header (Safe-top aware, elegan & responsif) --}}
+                <div class="safe-pt-header flex min-h-[3.75rem] flex-shrink-0 items-center justify-between border-b border-slate-200/80 bg-white/95 backdrop-blur-md px-3 sm:px-4 py-2.5 shadow-xs z-10 gap-2">
+                    <div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                        {{-- Tombol Kembali ke Daftar Chat (Mobile) --}}
+                        <button
+                            wire:click="backToMobileList"
+                            type="button"
+                            title="Kembali ke Daftar Chat"
+                            class="md:hidden flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 active:scale-95 transition-all flex-shrink-0 cursor-pointer"
+                        >
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"></path>
+                            </svg>
                         </button>
 
-                        <div class="flex h-10 w-10 items-center justify-center rounded-2xl {{ $headerAvatarBg }} text-sm font-black text-white shadow-sm ring-2 ring-teal-50">
+                        {{-- Avatar Kontak --}}
+                        <div
+                            @click="showMobileSummary = true"
+                            class="relative flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl {{ $headerAvatarBg }} text-sm font-black text-white shadow-sm ring-2 ring-teal-50 cursor-pointer lg:cursor-default"
+                        >
                             {{ $isGroupActive ? '👥' : substr($activeContactName, 0, 1) }}
+                            <span class="lg:hidden absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-400 text-[9px] shadow-xs" title="Info Leads">✨</span>
                         </div>
-                        <div class="min-w-0">
-                            <h3 class="truncate text-xs sm:text-sm font-extrabold text-slate-900 flex items-center gap-2">
+
+                        {{-- Nama & Info Kontak --}}
+                        <div class="min-w-0 flex-1 cursor-pointer lg:cursor-default" @click="showMobileSummary = true">
+                            <h3 class="truncate text-xs sm:text-sm font-extrabold text-slate-900 flex items-center gap-1.5">
                                 <span class="truncate">{{ $activeContactName }}</span>
-                                <span class="rounded-full px-2 py-0.5 text-[9px] font-bold tracking-wide {{ $active->channel_type === 'whatsapp' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : ($active->channel_type === 'fb_dm' || $active->channel_type === 'fb_comment' || $active->channel_type === 'facebook' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-pink-50 text-pink-700 border border-pink-200') }}">
+                                <span class="rounded-full px-1.5 py-0.2 text-[8px] sm:text-[9px] font-bold tracking-wide {{ $active->channel_type === 'whatsapp' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : ($active->channel_type === 'fb_dm' || $active->channel_type === 'fb_comment' || $active->channel_type === 'facebook' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-pink-50 text-pink-700 border border-pink-200') }}">
                                     {{ strtoupper(str_replace('_', ' ', $active->channel_type)) }}
                                 </span>
                             </h3>
-                            <p class="truncate font-mono text-[11px] text-slate-400 mt-0.5">{{ $activeContactPhone }}</p>
+                            <p class="truncate font-mono text-[10px] sm:text-[11px] text-slate-400">{{ $activeContactPhone }}</p>
                         </div>
                     </div>
 
-                    {{-- Switch Bot Button --}}
-                    @if (!$isGroupActive)
+                    {{-- Actions Kanan Header --}}
+                    <div class="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+                        {{-- Tombol Ringkasan Leads Khusus Mobile (Gantikan FAB melayang yang menutupi pesan chat) --}}
                         <button
-                            wire:click="toggleBot"
                             type="button"
-                            class="flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-bold shadow-xs transition cursor-pointer {{ $active->is_bot_active ? 'border-teal-200 bg-teal-50 text-teal-700 hover:bg-teal-100' : 'border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200' }}"
+                            @click="showMobileSummary = true"
+                            title="Ringkasan Leads & Status Pipeline"
+                            class="lg:hidden flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold shadow-xs hover:bg-amber-100 active:scale-95 transition cursor-pointer"
                         >
-                            <span class="h-2 w-2 rounded-full {{ $active->is_bot_active ? 'bg-teal-500 animate-pulse' : 'bg-slate-400' }}"></span>
-                            <span>Bot AI: {{ $active->is_bot_active ? 'ON' : 'OFF' }}</span>
+                            <x-heroicon-s-sparkles class="w-3.5 h-3.5 text-amber-500" />
+                            <span class="text-[11px]">Leads</span>
                         </button>
-                    @endif
+
+                        {{-- Switch Bot Button --}}
+                        @if (!$isGroupActive)
+                            <button
+                                wire:click="toggleBot"
+                                type="button"
+                                title="Status Bot AI"
+                                class="flex items-center gap-1.5 rounded-xl border px-2.5 sm:px-3 py-1.5 text-xs font-bold shadow-xs transition cursor-pointer {{ $active->is_bot_active ? 'border-teal-200 bg-teal-50 text-teal-700 hover:bg-teal-100' : 'border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200' }}"
+                            >
+                                <span class="h-2 w-2 rounded-full {{ $active->is_bot_active ? 'bg-teal-500 animate-pulse' : 'bg-slate-400' }}"></span>
+                                <span class="hidden sm:inline">Bot AI:</span>
+                                <span>{{ $active->is_bot_active ? 'ON' : 'OFF' }}</span>
+                            </button>
+                        @endif
+
+                        {{-- Tombol Cepat Kembali ke Panel Wasilah AI --}}
+                        <a
+                            href="{{ route('filament.admin.pages.dashboard', ['tenant' => $office->slug]) }}"
+                            title="Kembali ke Panel Wasilah AI"
+                            class="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-100 text-slate-600 hover:bg-teal-50 hover:text-teal-700 transition-all border border-slate-200/80 shadow-2xs"
+                        >
+                            <x-heroicon-o-home class="w-4 h-4" />
+                        </a>
+                    </div>
                 </div>
 
                 {{-- MESSAGE STREAM CONTAINER --}}
@@ -264,10 +325,10 @@
                     </div>
                 @endif
 
-                {{-- INPUT BAR BOTTOM DOCK --}}
-                <div class="flex-shrink-0 border-t border-slate-100 bg-white p-3 sm:p-3.5">
+                {{-- INPUT BAR BOTTOM DOCK (Safe-bottom aware) --}}
+                <div class="safe-pb-input flex-shrink-0 border-t border-slate-100 bg-white p-2.5 sm:p-3.5">
                     <form wire:submit.prevent="sendReply" class="flex items-center gap-2">
-                        <label class="cursor-pointer rounded-xl p-2.5 text-slate-400 transition hover:bg-teal-50 hover:text-teal-600 flex-shrink-0">
+                        <label class="cursor-pointer rounded-xl p-2 text-slate-400 transition hover:bg-teal-50 hover:text-teal-600 flex-shrink-0">
                             <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
                             <input
                                 type="file"
@@ -281,7 +342,7 @@
                             type="text"
                             wire:model="replyText"
                             placeholder="Ketik balasan pesan... (Tekan Enter)"
-                            class="flex-1 rounded-xl border border-slate-200/90 bg-slate-50 px-4 py-2.5 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:border-teal-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20 transition-all"
+                            class="flex-1 rounded-xl border border-slate-200/90 bg-slate-50 px-3.5 py-2.5 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:border-teal-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20 transition-all shadow-2xs"
                         />
 
                         <button
@@ -295,17 +356,6 @@
                     </form>
                 </div>
 
-                {{-- FLOATING ACTION BUTTON (FAB) KHUSUS HP --}}
-                <div class="lg:hidden absolute bottom-20 right-4 z-20">
-                    <button
-                        type="button"
-                        @click="showMobileSummary = true"
-                        class="flex items-center gap-2 px-4 py-2.5 rounded-full bg-slate-900 text-white text-xs font-bold shadow-xl border border-slate-700/80 hover:bg-slate-800 active:scale-95 transition-all cursor-pointer">
-                        <x-heroicon-s-sparkles class="w-4 h-4 text-amber-400" />
-                        <span>Summary Leads</span>
-                    </button>
-                </div>
-
             @else
                 <div class="flex flex-1 flex-col items-center justify-center text-center p-6 text-slate-400">
                     <div class="h-16 w-16 rounded-3xl bg-teal-50 text-teal-600 flex items-center justify-center mb-3">
@@ -313,6 +363,13 @@
                     </div>
                     <p class="text-sm font-bold text-slate-700">Pilih percakapan untuk mulai berinteraksi.</p>
                     <p class="text-xs text-slate-400 mt-1 max-w-sm">Kelola chat WhatsApp, Facebook, dan Instagram dalam satu layar kerja terpadu.</p>
+                    <div class="mt-4">
+                        <a href="{{ route('filament.admin.pages.dashboard', ['tenant' => $office->slug]) }}"
+                           class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-teal-50 text-slate-700 hover:text-teal-700 text-xs font-bold transition border border-slate-200 shadow-2xs">
+                            <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                            <span>Kembali ke Panel Wasilah AI</span>
+                        </a>
+                    </div>
                 </div>
             @endif
         </div>
@@ -456,20 +513,20 @@
                 x-transition:leave-end="translate-x-full"
                 class="w-screen max-w-md bg-white shadow-2xl flex flex-col">
 
-                <div class="flex items-center justify-between border-b border-slate-200 px-4 py-3.5 bg-slate-50">
-                    <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
-                        <x-heroicon-s-sparkles class="w-4 h-4 text-teal-600" />
+                <div class="safe-pt-header flex items-center justify-between border-b border-slate-200 px-4 py-3.5 bg-slate-900 text-white">
+                    <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                        <x-heroicon-s-sparkles class="w-4 h-4 text-amber-400" />
                         <span>Ringkasan & Info Leads</span>
                     </h3>
                     <button
                         type="button"
                         @click="showMobileSummary = false"
-                        class="rounded-lg p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 cursor-pointer">
-                        ✕
+                        class="rounded-xl p-1.5 text-slate-400 hover:text-white hover:bg-white/10 active:scale-95 transition cursor-pointer">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
                     </button>
                 </div>
 
-                <div class="flex-1 overflow-y-auto p-4 space-y-4">
+                <div class="safe-bottom flex-1 overflow-y-auto p-4 space-y-4 touch-scroll">
                     @if ($active && $active->contact)
                         @php
                             $contact = $active->contact;

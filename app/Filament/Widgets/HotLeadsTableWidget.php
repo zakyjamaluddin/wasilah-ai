@@ -66,7 +66,7 @@ class HotLeadsTableWidget extends BaseWidget
                     ->label('Buka Chat')
                     ->icon('heroicon-o-chat-bubble-left-right')
                     ->color('success')
-                    ->url(fn (Contact $record) => route('workspace.crm', ['office' => Filament::getTenant()->slug]), shouldOpenInNewTab: true),
+                    ->url(fn (Contact $record) => route('workspace.crm', ['office' => Filament::getTenant()->slug]), shouldOpenInNewTab: false),
             ])
             ->emptyStateHeading('Belum Ada Prospek Panas')
             ->emptyStateDescription('Ketika status leads diubah menjadi Hot Prospect atau Closing, mereka akan otomatis tampil di sini.');
