@@ -12,8 +12,20 @@ class BaileysService
 
     public function __construct()
     {
-        $this->baseUrl = config('services.baileys.url', env('BAILEYS_API_URL', 'http://vps.wasilah-ai.my.id:3100'));
+        $rawUrl = config('services.baileys.url', env('BAILEYS_API_URL', 'http://vps.wasilah-ai.my.id:3100'));
+
+        // Port 3100 di Fastify berjalan dengan HTTP murni. Jika diawali https://, otomatis perbaiki ke http://
+        if (str_contains($rawUrl, ':3100') && str_starts_with($rawUrl, 'https://')) {
+            $rawUrl = str_replace('https://', 'http://', $rawUrl);
+        }
+
+        $this->baseUrl = rtrim((string) $rawUrl, '/');
         $this->apiKey = config('services.baileys.key', env('BAILEYS_API_KEY', 'rahasia-super-aman-123'));
+    }
+
+    public function getBaseUrl(): string
+    {
+        return $this->baseUrl;
     }
 
     public function client(int $timeout = 15)

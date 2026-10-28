@@ -60,7 +60,7 @@ Route::post('/checkout/pay/{invoice}', [CheckoutController::class, 'pay'])->name
 
 // 🛠️ DIAGNOSIS KONEKSI KE BAILEYS VPS
 Route::get('/diag-baileys', function (\App\Services\BaileysService $baileys) {
-    $targetUrl = config('services.baileys.url');
+    $targetUrl = $baileys->getBaseUrl();
     $start = microtime(true);
     try {
         $client = $baileys->client(10);
@@ -80,7 +80,7 @@ Route::get('/diag-baileys', function (\App\Services\BaileysService $baileys) {
             'target_url' => $targetUrl,
             'duration_seconds' => $duration,
             'error_message' => $e->getMessage(),
-            'suggestion' => 'Jika error cURL timeout/refused, pastikan port 3100 diizinkan keluar oleh firewall hosting Anda atau Nginx me-reverse proxy port 3100.',
+            'suggestion' => 'Pastikan URL menggunakan http:// (bukan https://) pada port 3100.',
         ], 500);
     }
 });
