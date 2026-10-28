@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Offices\Schemas;
 
 use App\Models\ComposioAccount;
+use App\Models\Office;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -101,6 +102,22 @@ class OfficeForm
                                     ->native(false)
                                     ->helperText('Jika dikosongkan, status akan dianggap Free.'),
                             ])->columns(2),
+
+                        // 🔥 Tautan Undangan Pengelola Kantor
+                        Section::make('🔗 Tautan Undangan Pengelola (Invite Link)')
+                            ->description('Bagikan tautan ini ke calon pengelola atau staf. Mereka cukup membuka tautan dan login/signup dengan Google untuk otomatis mendapatkan akses pengelola (Admin) di kantor ini.')
+                            ->schema([
+                                TextInput::make('invitation_url')
+                                    ->label('Tautan Undangan Aktif')
+                                    ->default(fn (?Office $record) => $record?->getInvitationUrl() ?: 'Simpan kantor terlebih dahulu untuk menghasilkan tautan undangan.')
+                                    ->readOnly()
+                                    ->copyable()
+                                    ->copyMessage('Tautan undangan berhasil disalin!')
+                                    ->columnSpanFull()
+                                    ->helperText('Klik ikon salin di sisi kanan untuk menyalin tautan undangan.'),
+                            ])
+                            ->collapsible()
+                            ->visible(fn (?Office $record) => $record !== null),
                     ])->columns(2),
             ])->columns(1);
     }

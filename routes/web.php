@@ -26,6 +26,25 @@ Route::get('/workspace/{office:slug}/crm', OmnichannelWorkspace::class)
     ->name('workspace.crm');
 
 
+// 🔥 TAUTAN UNDANGAN PENGELOLA KANTOR (OFFICE INVITATION)
+Route::get('/join/{code}', [\App\Http\Controllers\OfficeInvitationController::class, 'show'])->name('office.invite');
+
+// 🔥 GOOGLE OAUTH ROUTES (LOGIN, SIGNUP & UNDANGAN)
+Route::get('/auth/google/redirect', [\App\Http\Controllers\Auth\GoogleLoginController::class, 'redirect'])->name('socialite.google.redirect');
+Route::get('/auth/google/callback', [\App\Http\Controllers\Auth\GoogleLoginController::class, 'callback'])->name('socialite.google.callback');
+Route::get('/auth/{provider}/redirect', function ($provider, \Illuminate\Http\Request $request) {
+    if ($provider === 'google') {
+        return app(\App\Http\Controllers\Auth\GoogleLoginController::class)->redirect($request);
+    }
+    return \Laravel\Socialite\Facades\Socialite::driver($provider)->redirect();
+})->name('socialite.redirect');
+Route::get('/auth/{provider}/callback', function ($provider, \Illuminate\Http\Request $request) {
+    if ($provider === 'google') {
+        return app(\App\Http\Controllers\Auth\GoogleLoginController::class)->callback($request);
+    }
+    return redirect('/admin');
+})->name('socialite.callback');
+
 // 🔥 1-CLICK META OAUTH ROUTES
 Route::get('/workspace/{office:slug}/auth/facebook', [FacebookOAuthController::class, 'redirect'])
     ->name('auth.facebook.redirect');

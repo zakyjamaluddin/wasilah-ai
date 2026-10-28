@@ -16,7 +16,7 @@ class Office extends Model implements HasName
 
     protected $guarded = ['id'];
 
-    // Otomatis buat slug saat nama kantor diisi
+    // Otomatis buat slug dan invitation_code saat nama kantor diisi
     protected static function boot()
     {
         parent::boot();
@@ -24,7 +24,22 @@ class Office extends Model implements HasName
             if (empty($office->slug)) {
                 $office->slug = Str::slug($office->name);
             }
+            if (empty($office->invitation_code)) {
+                $office->invitation_code = Str::random(24);
+            }
         });
+    }
+
+    public function getInvitationUrl(): string
+    {
+        return route('office.invite', ['code' => $this->invitation_code ?: '']);
+    }
+
+    public function regenerateInvitationCode(): string
+    {
+        $newCode = Str::random(24);
+        $this->update(['invitation_code' => $newCode]);
+        return $newCode;
     }
 
      protected $casts = [
