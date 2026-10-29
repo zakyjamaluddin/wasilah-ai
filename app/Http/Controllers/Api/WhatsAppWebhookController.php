@@ -9,6 +9,7 @@ use App\Models\Contact;
 use App\Models\Conversation;
 use App\Models\Message;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -137,39 +138,48 @@ class WhatsAppWebhookController extends Controller
                 'unread_count' => $isFromMe ? 0 : ($conversation->unread_count + 1),
             ]);
 
-            // Eksekusi AI jika pesan dari customer personal dan bot aktif
-            if (!$isFromMe && $conversation->is_bot_active && !$isGroup) {
-                try {
-                    $nineRouter = app(\App\Services\NineRouterService::class);
-                    $baileys = app(\App\Services\BaileysService::class);
+            // Eksekusi AI jika pesan dari customer personal dan bot aktif sesuai jadwal
+            if (!$isFromMe && !$isGroup) {
+                if (!$conversation->is_bot_active) {
+                    Log::info("[Bot WA] Chat dari {$senderName} tidak dibalas: Bot di obrolan ini dimatikan manual oleh CS.");
+                } elseif (!$channel->shouldBotReplyNow()) {
+                    Log::info("[Bot WA] Chat dari {$senderName} tidak dibalas: Saat ini Jam Kerja CS ({$channel->office_start_time} - {$channel->office_end_time} WIB) sesuai jadwal channel [{$channel->name}].");
+                } else {
+                    try {
+                        $nineRouter = app(\App\Services\NineRouterService::class);
+                        $baileys = app(\App\Services\BaileysService::class);
 
-                    $localImagePath = null;
-                    if ($messageType === 'image' && $mediaUrl) {
-                        $localImagePath = storage_path('app/public/' . str_replace('/storage/', '', $mediaUrl));
-                    }
-
-                    $botReply = $nineRouter->generateReply($conversation, $localImagePath);
-                    if ($botReply) {
-                        $botMessage = Message::create([
-                            'conversation_id' => $conversation->id,
-                            'office_id' => $officeId,
-                            'sender_type' => 'bot',
-                            'message_type' => 'text',
-                            'message_body' => $botReply,
-                            'is_read' => true,
-                        ]);
-
-                        $conversation->update(['last_message_at' => now()]);
-                        $targetNumber = $contact->wa_jid ?: $contact->phone_number;
-                        $res = $baileys->sendTextMessage($channel->identifier, $targetNumber, $botReply);
-
-                        if (!empty($res['data']['messageId'])) {
-                            $botMessage->update(['external_message_id' => $res['data']['messageId']]);
+                        $localImagePath = null;
+                        if ($messageType === 'image' && $mediaUrl) {
+                            $localImagePath = storage_path('app/public/' . str_replace('/storage/', '', $mediaUrl));
                         }
 
-                        $nineRouter->analyzeAndSummarizeLead($conversation);
+                        $botReply = $nineRouter->generateReply($conversation, $localImagePath);
+                        if ($botReply) {
+                            $botMessage = Message::create([
+                                'conversation_id' => $conversation->id,
+                                'office_id' => $officeId,
+                                'sender_type' => 'bot',
+                                'message_type' => 'text',
+                                'message_body' => $botReply,
+                                'is_read' => true,
+                            ]);
+
+                            $conversation->update(['last_message_at' => now()]);
+                            $targetNumber = $contact->wa_jid ?: $contact->phone_number;
+                            $res = $baileys->sendTextMessage($channel->identifier, $targetNumber, $botReply);
+
+                            if (!empty($res['data']['messageId'])) {
+                                $botMessage->update(['external_message_id' => $res['data']['messageId']]);
+                            }
+
+                            $nineRouter->analyzeAndSummarizeLead($conversation);
+                            Log::info("[Bot WA] Berhasil membalas otomatis chat {$senderName}: '{$botReply}'");
+                        }
+                    } catch (\Exception $e) {
+                        Log::error("[Bot WA Error] Gagal generate/kirim balasan AI: " . $e->getMessage());
                     }
-                } catch (\Exception $e) {}
+                }
             }
 
             return response()->json(['status' => 'saved']);

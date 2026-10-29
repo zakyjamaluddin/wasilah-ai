@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Channels\Schemas;
 
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -114,20 +115,41 @@ class ChannelForm
                                 'always'               => '24 Jam Nonstop (Selalu Aktif)',
                                 'outside_office_hours' => 'Hanya Aktif di Luar Jam Kerja CS (Malam & Libur)',
                             ])
-                            ->default('always'),
+                            ->default('always')
+                            ->live()
+                            ->columnSpanFull(),
 
                         TimePicker::make('office_start_time')
-                            ->label('Jam Masuk CS (Siang)')
+                            ->label('Jam Masuk CS (Mulai Siang)')
                             ->default('08:00')
-                            ->seconds(false),
+                            ->seconds(false)
+                            ->visible(fn (Get $get) => $get('bot_schedule_type') === 'outside_office_hours'),
 
                         TimePicker::make('office_end_time')
-                            ->label('Jam Pulang CS (Malam)')
+                            ->label('Jam Pulang CS (Mulai Malam)')
                             ->default('17:00')
-                            ->seconds(false),
+                            ->seconds(false)
+                            ->visible(fn (Get $get) => $get('bot_schedule_type') === 'outside_office_hours'),
+
+                        CheckboxList::make('work_days')
+                            ->label('Hari Masuk Kerja CS')
+                            ->helperText('Di luar hari kerja ini (misal hari libur/Minggu), AI Bot otomatis aktif 24 jam membalas pesan.')
+                            ->options([
+                                '1' => 'Senin',
+                                '2' => 'Selasa',
+                                '3' => 'Rabu',
+                                '4' => 'Kamis',
+                                '5' => 'Jumat',
+                                '6' => 'Sabtu',
+                                '7' => 'Minggu',
+                            ])
+                            ->default(['1', '2', '3', '4', '5', '6'])
+                            ->columns(7)
+                            ->columnSpanFull()
+                            ->visible(fn (Get $get) => $get('bot_schedule_type') === 'outside_office_hours'),
                     ])
-                    ->columns(3)
-                    ->collapsed(),
+                    ->columns(2)
+                    ->collapsible(),
             ])->columns(1);
     }
 }

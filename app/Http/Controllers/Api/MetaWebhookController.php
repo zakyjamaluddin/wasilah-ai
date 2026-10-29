@@ -154,7 +154,11 @@ class MetaWebhookController extends Controller
                         ]);
 
                         // 4. BALAS OTOMATIS OLEH 9ROUTER AI VIA METAGRAPHSERVICE
-                        if ($conversation->is_bot_active) {
+                        if (!$conversation->is_bot_active) {
+                            Log::info("[Bot Meta] Chat dari {$senderId} tidak dibalas: Bot di obrolan ini dimatikan manual oleh CS.");
+                        } elseif (!$channel->shouldBotReplyNow()) {
+                            Log::info("[Bot Meta] Chat dari {$senderId} tidak dibalas: Saat ini Jam Kerja CS ({$channel->office_start_time} - {$channel->office_end_time} WIB) sesuai jadwal channel [{$channel->name}].");
+                        } else {
                             $localImagePath = null;
                             if ($messageType === 'image' && $mediaUrl) {
                                 $relativePath = str_replace('/storage/', '', $mediaUrl);
@@ -180,6 +184,7 @@ class MetaWebhookController extends Controller
                                 ]);
 
                                 $nineRouter->analyzeAndSummarizeLead($conversation);
+                                Log::info("[Bot Meta] Berhasil membalas otomatis chat {$senderId}: '{$botReply}'");
                             }
                         }
                     }
